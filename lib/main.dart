@@ -2746,7 +2746,7 @@ SnackBar(content: Text('OCR failed: $e')),
 Map<String, String> _parseDimensions(String text) {
 final Map<String, String> result = {};
 final RegExp regex = RegExp(
-r"\b(\d+(?:\.\d+)?\s*(?:ft|feet)\s*\d+(?:\.\d+)?\s*(?:in|inch|inches)?|\d+(?:\.\d+)?\s*[''′]\s*-?\s*\d+(?:\.\d+)?\s*[\"″]?)\b",
+r"""\b(\d+(?:\.\d+)?\s*(?:ft|feet)\s*\d+(?:\.\d+)?\s*(?:in|inch|inches)?|\d+(?:\.\d+)?\s*['’′]\s*-?\s*\d+(?:\.\d+)?\s*["″]?)\b""",
 caseSensitive: false,
 );
 
@@ -2757,6 +2757,7 @@ if (value != null && value.trim().isNotEmpty) {
 result['Dimension $count'] = value.trim();
 count++;
 }
+
 }
 
 // Some floor plans print simple room sizes such as 12 x 10 without
@@ -2787,7 +2788,7 @@ final String normalized = value
 .replaceAll('feet', 'ft')
 .replaceAll('inches', 'in')
 .replaceAll('inch', 'in')
-.replaceAll(''', "'")
+.replaceAll('’', "'")
         .replaceAll('′', "'")
         .replaceAll('″', '"');
 
@@ -2796,7 +2797,7 @@ final String normalized = value
       caseSensitive: false,
     );
     final RegExp quote = RegExp(
-      r"(\d+(?:\.\d+)?)\s*'\s*-?\s*(\d+(?:\.\d+)?)?\s*\"?",
+      r'''(\d+(?:\.\d+)?)\s*'\s*-?\s*(\d+(?:\.\d+)?)?\s*"?''',
       caseSensitive: false,
     );
 
@@ -5601,7 +5602,7 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
         ],
       ),
       body: PdfPreview(
-        build: (_) => _generatePdfSync(),
+        build: (_) => _generatePdf(),
       ),
     );
   }
@@ -5617,19 +5618,6 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
     );
 
     return pdf.save();
-  }
-
-  pw.Document _generatePdfSync() {
-    final pdf = pw.Document();
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => _buildPdfPages(context),
-      ),
-    );
-
-    return pdf;
   }
 
   List<pw.Widget> _buildPdfPages(pw.Context context) {
@@ -5716,8 +5704,8 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
       decoration: pw.BoxDecoration(
         gradient: pw.LinearGradient(
           colors: [
-            const PdfColor.fromHex('172B65'),
-            const PdfColor.fromHex('2457D6'),
+            PdfColor.fromHex('172B65'),
+            PdfColor.fromHex('2457D6'),
           ],
         ),
         borderRadius: pw.BorderRadius.circular(12),
@@ -5857,7 +5845,7 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
             label,
             style: pw.TextStyle(
               fontSize: 11,
-              color: PdfColors.black87,
+              color: PdfColors.black,
               fontWeight:
                   highlighted ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
@@ -5943,7 +5931,7 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
         text,
         style: pw.TextStyle(
           fontSize: 10,
-          color: isHeader ? PdfColors.blue900 : PdfColors.black87,
+          color: isHeader ? PdfColors.blue900 : PdfColors.black,
           fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
         textAlign: alignRight ? pw.TextAlign.right : pw.TextAlign.left,
@@ -6000,7 +5988,7 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
             label,
             style: pw.TextStyle(
               fontSize: 11,
-              color: PdfColors.black87,
+              color: PdfColors.black,
             ),
           ),
           pw.Text(

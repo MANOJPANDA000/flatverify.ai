@@ -1,0 +1,40 @@
+name: my_first_app
+description: Flatverify.ai - Understand Your Property
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.9.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+  # Local database / saved audits
+  hive_flutter: ^1.1.0
+
+  # Floor-plan image selection
+  image_picker: ^1.2.0
+
+  # OCR - extract dimensions/text from floor plans
+  google_mlkit_text_recognition: ^0.15.0
+  google_mlkit_commons: ^0.11.1
+
+  # PDF report generation
+  pdf: ^3.13.0
+
+  # PDF preview / Android share sheet
+  printing: ^5.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

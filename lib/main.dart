@@ -115,18 +115,58 @@ class FLogo extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: Text(
-          'F',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: size * 0.55,
-            fontWeight: FontWeight.w900,
-          ),
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.13),
+        child: const CustomPaint(
+          painter: _FlatverifyLogoPainter(),
         ),
       ),
     );
   }
+}
+
+class _FlatverifyLogoPainter extends CustomPainter {
+  const _FlatverifyLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint white = Paint()..color = Colors.white;
+    final Paint navy = Paint()..color = AppColors.dark;
+    final Paint line = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * .075
+      ..strokeCap = StrokeCap.round;
+
+    final Path roof = Path()
+      ..moveTo(size.width * .08, size.height * .55)
+      ..lineTo(size.width * .50, size.height * .15)
+      ..lineTo(size.width * .92, size.height * .55)
+      ..lineTo(size.width * .78, size.height * .55)
+      ..lineTo(size.width * .50, size.height * .30)
+      ..lineTo(size.width * .22, size.height * .55)
+      ..close();
+    canvas.drawPath(roof, white);
+
+    final Path checkHouse = Path()
+      ..moveTo(size.width * .22, size.height * .56)
+      ..lineTo(size.width * .43, size.height * .76)
+      ..lineTo(size.width * .82, size.height * .43)
+      ..lineTo(size.width * .82, size.height * .78)
+      ..lineTo(size.width * .50, size.height * .92)
+      ..lineTo(size.width * .18, size.height * .76)
+      ..close();
+    canvas.drawPath(checkHouse, navy);
+
+    canvas.drawLine(
+      Offset(size.width * .43, size.height * .75),
+      Offset(size.width * .80, size.height * .44),
+      line,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class BrandHeader extends StatelessWidget {
@@ -186,7 +226,6 @@ class _MainNavigationScreenState
 
   final List<Widget> pages = const [
     HomeScreen(),
-    AreaCalculatorScreen(),
     OcrScannerScreen(),
     SavedAuditsScreen(),
   ];
@@ -214,14 +253,9 @@ class _MainNavigationScreenState
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate),
-            label: 'Calculator',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.document_scanner_outlined),
-            selectedIcon: Icon(Icons.document_scanner),
-            label: 'Scan',
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check),
+            label: 'Verify',
           ),
           NavigationDestination(
             icon: Icon(Icons.folder_outlined),
@@ -291,7 +325,9 @@ class HomeScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
-                          const StandaloneCalculatorPage(),
+                          const OcrScannerScreen(
+                            initialMode: VerifyInputMode.manual,
+                          ),
                         ),
                       );
                     },
@@ -493,6 +529,9 @@ class RoomData {
   double widthMeters;
   DimensionUnit unit;
   bool isAutoExtracted;
+  String? sourcePhotoId;
+  String? sourcePairId;
+  bool isUserVerified;
 
   RoomData({
     this.name = '',
@@ -500,7 +539,35 @@ class RoomData {
     this.widthMeters = 0.0,
     this.unit = DimensionUnit.feetInches,
     this.isAutoExtracted = false,
+    this.sourcePhotoId,
+    this.sourcePairId,
+    this.isUserVerified = false,
   });
+}
+
+class _ScanPhotoData {
+  final String id;
+  final File imageFile;
+  final String originalPath;
+  String ocrText = '';
+  final List<String> dimensions;
+  final List<String> pairIds;
+
+  _ScanPhotoData({
+    required this.id,
+    required this.imageFile,
+    required this.originalPath,
+    List<String>? dimensions,
+    List<String>? pairIds,
+  })  : dimensions = dimensions ?? [],
+        pairIds = pairIds ?? [];
+}
+
+class _PdfScanEvidence {
+  final Uint8List bytes;
+  final String ocrText;
+
+  const _PdfScanEvidence(this.bytes, this.ocrText);
 }
 
 // ============================================================
@@ -657,6 +724,10 @@ Future<Map<String, String>?> showAuditDetailsDialog(
       return StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 24,
+            ),
             title: const Row(
               children: [
                 Icon(
@@ -674,10 +745,12 @@ Future<Map<String, String>?> showAuditDetailsDialog(
                 ),
               ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+            content: SizedBox(
+              width: MediaQuery.sizeOf(dialogContext).width,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -754,6 +827,7 @@ Future<Map<String, String>?> showAuditDetailsDialog(
                         child:
                         DropdownButtonFormField<String>(
                           value: configuration,
+                          isExpanded: true,
                           decoration:
                           const InputDecoration(
                             labelText: 'Configuration',
@@ -833,7 +907,8 @@ Future<Map<String, String>?> showAuditDetailsDialog(
                       ),
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -894,6 +969,9 @@ Future<Map<String, String>?> showAuditDetailsDialog(
       );
     },
   );
+
+  // Keep form controllers alive until the closing route animation finishes.
+  await Future<void>.delayed(const Duration(milliseconds: 350));
 
   builderController.dispose();
   projectController.dispose();
@@ -1442,6 +1520,9 @@ class RoomCard extends StatefulWidget {
   final int roomNumber;
   final VoidCallback onDelete;
   final VoidCallback onChanged;
+  final bool requiresConfirmation;
+  final bool isConfirmed;
+  final VoidCallback? onConfirm;
 
   const RoomCard({
     super.key,
@@ -1449,6 +1530,9 @@ class RoomCard extends StatefulWidget {
     required this.roomNumber,
     required this.onDelete,
     required this.onChanged,
+    this.requiresConfirmation = false,
+    this.isConfirmed = true,
+    this.onConfirm,
   });
 
   @override
@@ -2340,6 +2424,57 @@ class _RoomCardState
               ],
             ),
           ),
+          if (widget.requiresConfirmation) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: widget.isConfirmed
+                    ? const Color(0xFFEFFAF3)
+                    : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: widget.isConfirmed
+                      ? const Color(0xFFB8E6C9)
+                      : const Color(0xFFF4D47A),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    widget.isConfirmed
+                        ? Icons.verified_outlined
+                        : Icons.auto_awesome_outlined,
+                    color: widget.isConfirmed
+                        ? AppColors.green
+                        : AppColors.orange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      widget.isConfirmed
+                          ? 'Confirmed by user • Included in total area'
+                          : 'OCR suggestion • Confirm or edit before calculation',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: widget.isConfirmed
+                            ? AppColors.green
+                            : const Color(0xFF6B5A20),
+                      ),
+                    ),
+                  ),
+                  if (!widget.isConfirmed)
+                    TextButton(
+                      onPressed: widget.onConfirm,
+                      child: const Text('Confirm'),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -2643,8 +2778,15 @@ double _dynamicDouble(dynamic value) {
 // OCR SCANNER
 // ============================================================
 
+enum VerifyInputMode { manual, photo }
+
 class OcrScannerScreen extends StatefulWidget {
-  const OcrScannerScreen({super.key});
+  final VerifyInputMode? initialMode;
+
+  const OcrScannerScreen({
+    super.key,
+    this.initialMode,
+  });
 
   @override
   State<OcrScannerScreen> createState() => _OcrScannerScreenState();
@@ -2659,7 +2801,20 @@ script: TextRecognitionScript.latin,
 String extractedText = '';
 Map<String, String> parsedDimensions = {};
 final List<File> selectedImages = [];
+final List<_ScanPhotoData> scanPhotos = [];
+final Set<String> dismissedOcrPairIds = {};
+int _photoSequence = 0;
 List<RoomData> scanRooms = [];
+VerifyInputMode? selectedMode;
+
+@override
+void initState() {
+super.initState();
+selectedMode = widget.initialMode;
+if (selectedMode == VerifyInputMode.manual) {
+scanRooms.add(RoomData(name: 'Living Room'));
+}
+}
 
 bool isProcessing = false;
 double internalWallPercent = 12.0;
@@ -2669,7 +2824,8 @@ double loadingPercent = 30.0;
 double get usableArea {
 double totalSquareMeters = 0.0;
 for (final room in scanRooms) {
-if (room.lengthMeters > 0 && room.widthMeters > 0) {
+final bool canCalculate = !room.isAutoExtracted || room.isUserVerified;
+if (canCalculate && room.lengthMeters > 0 && room.widthMeters > 0) {
 totalSquareMeters += room.lengthMeters * room.widthMeters;
 }
 }
@@ -2706,8 +2862,16 @@ await processImage(File(image.path));
 }
 
 Future<void> processImage(File image) async {
+final String photoId =
+    'photo_${DateTime.now().microsecondsSinceEpoch}_${_photoSequence++}';
+final _ScanPhotoData photo = _ScanPhotoData(
+  id: photoId,
+  imageFile: image,
+  originalPath: image.path,
+);
 setState(() {
 selectedImages.add(image);
+scanPhotos.add(photo);
 isProcessing = true;
 });
 
@@ -2719,19 +2883,13 @@ final Map<String, String> found = _parseDimensions(text);
 
 if (!mounted) return;
 setState(() {
-final int imageNumber = selectedImages.length;
-if (text.trim().isNotEmpty) {
-extractedText = extractedText.trim().isEmpty
-? '--- Photo $imageNumber ---\n$text'
-: '$extractedText\n\n--- Photo $imageNumber ---\n$text';
-}
-
-int next = parsedDimensions.length + 1;
-for (final value in found.values) {
-parsedDimensions['Dimension $next'] = value;
-next++;
-}
-_appendMissingAutoRoomsFromDimensions();
+photo.ocrText = text;
+photo.dimensions
+  ..clear()
+  ..addAll(found.values);
+_ensurePairIds(photo);
+_appendRoomsForPhoto(photo);
+_refreshCompatibilityFields();
 isProcessing = false;
 });
 } catch (e) {
@@ -2745,12 +2903,32 @@ SnackBar(content: Text('OCR failed: $e')),
 
 Map<String, String> _parseDimensions(String text) {
 final Map<String, String> result = {};
-final RegExp regex = RegExp(
-r"""\b(\d+(?:\.\d+)?\s*(?:ft|feet)\s*\d+(?:\.\d+)?\s*(?:in|inch|inches)?|\d+(?:\.\d+)?\s*['’′]\s*-?\s*\d+(?:\.\d+)?\s*["″]?)\b""",
-caseSensitive: false,
+// Prefer complete Length x Width expressions. Floor plans commonly print
+// compact values such as 10'-6" X 12'-0", which the individual-value
+// fallback can otherwise split unreliably.
+final RegExp explicitPairRegex = RegExp(
+  r'''(\d{1,3}(?:\.\d+)?\s*(?:(?:ft|feet)\s*(?:\d+(?:\.\d+)?)?\s*(?:in|inch|inches)?|['’′]\s*-?\s*(?:\d+(?:\.\d+)?)?\s*["″]?))\s*[xX×]\s*(\d{1,3}(?:\.\d+)?\s*(?:(?:ft|feet)\s*(?:\d+(?:\.\d+)?)?\s*(?:in|inch|inches)?|['’′]\s*-?\s*(?:\d+(?:\.\d+)?)?\s*["″]?))''',
+  caseSensitive: false,
 );
 
 int count = 1;
+for (final match in explicitPairRegex.allMatches(text)) {
+  final String? length = match.group(1);
+  final String? width = match.group(2);
+  if (length != null && width != null) {
+    result['Dimension $count'] = length.trim();
+    count++;
+    result['Dimension $count'] = width.trim();
+    count++;
+  }
+}
+if (result.isNotEmpty) return result;
+
+final RegExp regex = RegExp(
+r"""(\d+(?:\.\d+)?\s*(?:ft|feet)\s*\d+(?:\.\d+)?\s*(?:in|inch|inches)?|\d+(?:\.\d+)?\s*['’′]\s*-?\s*\d+(?:\.\d+)?\s*["″]?)""",
+caseSensitive: false,
+);
+
 for (final match in regex.allMatches(text)) {
 final String? value = match.group(1);
 if (value != null && value.trim().isNotEmpty) {
@@ -2827,54 +3005,104 @@ final String normalized = value
     );
   }
 
-  // Used when a new photo is added. Existing OCR rooms that the user may
-  // already have corrected are kept; only newly available dimension pairs
-  // are appended to the calculation sheet.
-  void _appendMissingAutoRoomsFromDimensions() {
-    final List<String> values = parsedDimensions.values.toList();
-    final int existingAutoRooms =
-        scanRooms.where((room) => room.isAutoExtracted).length;
-
-    for (int pairIndex = existingAutoRooms;
-    (pairIndex * 2) + 1 < values.length;
-    pairIndex++) {
-      final int i = pairIndex * 2;
-      final RoomData? room = _roomFromDimensionPair(
-        values[i],
-        values[i + 1],
-        pairIndex,
-      );
-      if (room != null) scanRooms.add(room);
+  void _ensurePairIds(_ScanPhotoData photo) {
+    final int pairCount = photo.dimensions.length ~/ 2;
+    while (photo.pairIds.length < pairCount) {
+      photo.pairIds.add('${photo.id}_pair_${photo.pairIds.length}');
+    }
+    if (photo.pairIds.length > pairCount) {
+      photo.pairIds.removeRange(pairCount, photo.pairIds.length);
     }
   }
 
-  // Used after the user edits the raw OCR dimensions. OCR-derived rooms are
-  // rebuilt from those corrected values, while purely manual rooms remain.
-  void _rebuildRoomsFromDimensions() {
-    final List<RoomData> manualRooms =
-    scanRooms.where((room) => !room.isAutoExtracted).toList();
-    final List<String> values = parsedDimensions.values.toList();
-    final List<RoomData> rebuilt = [];
-
-    for (int i = 0; i + 1 < values.length; i += 2) {
-      final int pairIndex = i ~/ 2;
-      final RoomData? room = _roomFromDimensionPair(
-        values[i],
-        values[i + 1],
-        pairIndex,
-      );
-      if (room != null) rebuilt.add(room);
+  void _refreshCompatibilityFields() {
+    final List<String> textSections = [];
+    final Map<String, String> dimensions = {};
+    int dimensionNumber = 1;
+    for (int photoIndex = 0; photoIndex < scanPhotos.length; photoIndex++) {
+      final _ScanPhotoData photo = scanPhotos[photoIndex];
+      if (photo.ocrText.trim().isNotEmpty) {
+        textSections.add('--- Photo ${photoIndex + 1} ---\n${photo.ocrText}');
+      }
+      for (final value in photo.dimensions) {
+        dimensions['Dimension $dimensionNumber'] = value;
+        dimensionNumber++;
+      }
     }
+    extractedText = textSections.join('\n\n');
+    parsedDimensions = dimensions;
+  }
 
-    scanRooms = [...rebuilt, ...manualRooms];
+  void _appendRoomsForPhoto(_ScanPhotoData photo) {
+    _ensurePairIds(photo);
+    for (int pairIndex = 0; pairIndex < photo.pairIds.length; pairIndex++) {
+      final String pairId = photo.pairIds[pairIndex];
+      if (dismissedOcrPairIds.contains(pairId) ||
+          scanRooms.any((room) => room.sourcePairId == pairId)) {
+        continue;
+      }
+      final int dimensionIndex = pairIndex * 2;
+      final RoomData? room = _roomFromDimensionPair(
+        photo.dimensions[dimensionIndex],
+        photo.dimensions[dimensionIndex + 1],
+        scanRooms.where((room) => room.sourcePairId != null).length,
+      );
+      if (room != null) {
+        room.sourcePhotoId = photo.id;
+        room.sourcePairId = pairId;
+        scanRooms.add(room);
+      }
+    }
+  }
+
+  void _syncUnverifiedRoomsFromPhotos() {
+    final Set<String> activePairIds = {};
+    for (final photo in scanPhotos) {
+      _ensurePairIds(photo);
+      for (int pairIndex = 0; pairIndex < photo.pairIds.length; pairIndex++) {
+        final String pairId = photo.pairIds[pairIndex];
+        activePairIds.add(pairId);
+        final int dimensionIndex = pairIndex * 2;
+        final int existingIndex =
+            scanRooms.indexWhere((room) => room.sourcePairId == pairId);
+        if (existingIndex >= 0) {
+          final RoomData existing = scanRooms[existingIndex];
+          if (!existing.isUserVerified) {
+            final RoomData? updated = _roomFromDimensionPair(
+              photo.dimensions[dimensionIndex],
+              photo.dimensions[dimensionIndex + 1],
+              pairIndex,
+            );
+            if (updated == null) {
+              scanRooms.removeAt(existingIndex);
+            } else {
+              existing.lengthMeters = updated.lengthMeters;
+              existing.widthMeters = updated.widthMeters;
+            }
+          }
+        } else if (!dismissedOcrPairIds.contains(pairId)) {
+          _appendRoomsForPhoto(photo);
+        }
+      }
+    }
+    scanRooms.removeWhere((room) =>
+        room.sourcePairId != null &&
+        !room.isUserVerified &&
+        !activePairIds.contains(room.sourcePairId));
   }
 
   void _addManualRoom() {
-    setState(() => scanRooms.add(RoomData(name: 'Other / Custom')));
+    setState(() => scanRooms.insert(0, RoomData(name: 'Other / Custom')));
   }
 
   void _removeRoom(int index) {
-    setState(() => scanRooms.removeAt(index));
+    setState(() {
+      final RoomData room = scanRooms[index];
+      if (room.sourcePairId != null) {
+        dismissedOcrPairIds.add(room.sourcePairId!);
+      }
+      scanRooms.removeAt(index);
+    });
   }
 
   Future<void> _openImageReview(int initialIndex) async {
@@ -2942,19 +3170,71 @@ final String normalized = value
     controller.dispose();
   }
 
-  void _deletePhoto(int index) {
-    setState(() => selectedImages.removeAt(index));
+  Future<void> _deletePhoto(int index) async {
+    final String photoId = scanPhotos[index].id;
+    final int removableRooms = scanRooms
+        .where((room) => room.sourcePhotoId == photoId && !room.isUserVerified)
+        .length;
+    final int preservedRooms = scanRooms
+        .where((room) => room.sourcePhotoId == photoId && room.isUserVerified)
+        .length;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete floor-plan photo?'),
+        content: Text(
+          'This removes the photo, its OCR text and dimensions, and $removableRooms '
+          'unverified OCR room(s). $preservedRooms room(s) you edited will be kept as verified data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete photo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      scanRooms.removeWhere((room) =>
+          room.sourcePhotoId == photoId && !room.isUserVerified);
+      for (final room in scanRooms.where((room) => room.sourcePhotoId == photoId)) {
+        room.sourcePhotoId = null;
+        room.sourcePairId = null;
+        room.isAutoExtracted = false;
+      }
+      selectedImages.removeAt(index);
+      scanPhotos.removeAt(index);
+      _refreshCompatibilityFields();
+    });
   }
 
   Future<void> reviewAndEditScan() async {
-    if (parsedDimensions.isEmpty) {
+    if (scanPhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No dimensions were detected to review.')),
+        const SnackBar(content: Text('Please add a floor-plan photo first.')),
       );
       return;
     }
 
-    final Map<String, String> editable = Map<String, String>.from(parsedDimensions);
+    final List<List<String>> editable = scanPhotos
+        .map((photo) => List<String>.from(photo.dimensions))
+        .toList();
+    for (final dimensions in editable) {
+      if (dimensions.isEmpty) {
+        dimensions.addAll(['', '']);
+      } else if (dimensions.length.isOdd) {
+        dimensions.add('');
+      }
+    }
 
     await showDialog(
       context: context,
@@ -2990,7 +3270,7 @@ final String normalized = value
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Dimensions are paired in order as Length × Width. Correct OCR mistakes here, then use the calculator below to assign room names and fine-tune measurements.',
+                                'Dimensions are paired in order as Length × Width. Correct OCR mistakes or enter values missed because the photo was unclear. The room calculation updates after you apply the changes.',
                                 style: TextStyle(fontSize: 12, height: 1.4),
                               ),
                             ),
@@ -2998,34 +3278,57 @@ final String normalized = value
                         ),
                       ),
                       const SizedBox(height: 14),
-                      ...List.generate(editable.length, (index) {
-                        final String key = editable.keys.elementAt(index);
-                        final controller = TextEditingController(text: editable[key]);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: controller,
-                                  onChanged: (value) => editable[key] = value,
-                                  decoration: InputDecoration(labelText: key),
+                      ...List.generate(editable.length, (photoIndex) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Photo ${photoIndex + 1}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...List.generate(editable[photoIndex].length,
+                                (dimensionIndex) {
+                              final controller = TextEditingController(
+                                text: editable[photoIndex][dimensionIndex],
+                              );
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: controller,
+                                        onChanged: (value) =>
+                                            editable[photoIndex][dimensionIndex] = value,
+                                        decoration: InputDecoration(
+                                          labelText: 'Dimension ${dimensionIndex + 1}',
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () {
+                                        editable[photoIndex].removeAt(dimensionIndex);
+                                        setDialogState(() {});
+                                      },
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: AppColors.red,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  editable.remove(key);
-                                  setDialogState(() {});
-                                },
-                                icon: const Icon(Icons.delete_outline, color: AppColors.red),
-                              ),
-                            ],
-                          ),
+                              );
+                            }),
+                          ],
                         );
                       }),
                       OutlinedButton.icon(
                         onPressed: () {
-                          editable['Dimension ${editable.length + 1}'] = '';
+                          if (editable.isNotEmpty) editable.last.add('');
                           setDialogState(() {});
                         },
                         icon: const Icon(Icons.add),
@@ -3042,22 +3345,21 @@ final String normalized = value
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    final Map<String, String> cleaned = {};
-                    int count = 1;
-                    for (final value in editable.values) {
-                      final String v = value.trim();
-                      if (v.isNotEmpty) {
-                        cleaned['Dimension $count'] = v;
-                        count++;
-                      }
-                    }
                     setState(() {
-                      parsedDimensions = cleaned;
-                      _rebuildRoomsFromDimensions();
+                      for (int i = 0; i < scanPhotos.length; i++) {
+                        scanPhotos[i].dimensions
+                          ..clear()
+                          ..addAll(editable[i]
+                              .map((value) => value.trim())
+                              .where((value) => value.isNotEmpty));
+                        _ensurePairIds(scanPhotos[i]);
+                      }
+                      _syncUnverifiedRoomsFromPhotos();
+                      _refreshCompatibilityFields();
                     });
                     Navigator.pop(dialogContext);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Dimensions updated and area recalculated.')),
+                      const SnackBar(content: Text('Measurements updated and property area recalculated.')),
                     );
                   },
                   icon: const Icon(Icons.check),
@@ -3079,37 +3381,61 @@ final String normalized = value
       return;
     }
 
+    final bool isPhotoAudit = scanPhotos.isNotEmpty ||
+        extractedText.trim().isNotEmpty ||
+        parsedDimensions.isNotEmpty;
     final details = await showAuditDetailsDialog(
       context,
-      suggestedName:
-      'Floor Plan Scan - ${selectedImages.length} photo${selectedImages.length == 1 ? '' : 's'}',
+      suggestedName: isPhotoAudit
+          ? 'Floor Plan Scan - ${selectedImages.length} photo${selectedImages.length == 1 ? '' : 's'}'
+          : '${scanRooms.length} Areas - Flatverify.ai Calculation',
     );
     if (details == null) return;
 
-    final List<Map<String, dynamic>> roomList = scanRooms.map((room) {
+    final List<Map<String, dynamic>> roomList = scanRooms
+        .where((room) => !room.isAutoExtracted || room.isUserVerified)
+        .map((room) {
       return {
         'name': room.name,
         'lengthMeters': room.lengthMeters,
         'widthMeters': room.widthMeters,
         'unit': room.unit.name,
-        'source': room.isAutoExtracted ? 'ocr' : 'manual',
+        'source': room.isUserVerified
+            ? 'verified'
+            : (room.isAutoExtracted ? 'ocr' : 'manual'),
+        'sourcePhotoId': room.sourcePhotoId,
+        'sourcePairId': room.sourcePairId,
+        'isUserVerified': room.isUserVerified,
       };
     }).toList();
 
     final List<String> imagePaths = selectedImages.map((image) => image.path).toList();
     final List<Uint8List> imageBytes = [];
-    for (final image in selectedImages) {
+    final List<Map<String, dynamic>> savedScanPhotos = [];
+    for (final photo in scanPhotos) {
+      Uint8List? bytes;
       try {
-        imageBytes.add(await image.readAsBytes());
+        final Uint8List readBytes = await photo.imageFile.readAsBytes();
+        bytes = readBytes;
+        imageBytes.add(readBytes);
       } catch (_) {
         // Keep the audit save working even if one image can no longer be read.
       }
+      savedScanPhotos.add({
+        'id': photo.id,
+        'originalPath': photo.originalPath,
+        'ocrText': photo.ocrText,
+        'dimensions': List<String>.from(photo.dimensions),
+        'pairIds': List<String>.from(photo.pairIds),
+        'generatedRoomIds': List<String>.from(photo.pairIds),
+        if (bytes != null) 'imageBytes': bytes,
+      });
     }
 
     final Box box = Hive.box('local_audits');
 
     await box.add({
-      'type': 'scan',
+      'type': isPhotoAudit ? 'scan' : 'calculator',
       'auditName': details['auditName'],
       'builder': details['builder'],
       'project': details['project'],
@@ -3124,6 +3450,8 @@ final String normalized = value
       'imagePath': imagePaths.isNotEmpty ? imagePaths.first : '',
       'imagePaths': imagePaths,
       'imageBytes': imageBytes,
+      'scanPhotos': savedScanPhotos,
+      'dismissedOcrPairIds': dismissedOcrPairIds.toList(),
       'rooms': roomList,
       'usableArea': usableArea,
       'carpetArea': usableArea,
@@ -3140,9 +3468,15 @@ final String normalized = value
     if (!mounted) return;
     setState(() {
       selectedImages.clear();
+      scanPhotos.clear();
+      dismissedOcrPairIds.clear();
       extractedText = '';
       parsedDimensions = {};
       scanRooms = [];
+      selectedMode = widget.initialMode;
+      if (selectedMode == VerifyInputMode.manual) {
+        scanRooms.add(RoomData(name: 'Living Room'));
+      }
       isProcessing = false;
       internalWallPercent = 12.0;
       externalWallPercent = 0.0;
@@ -3151,8 +3485,80 @@ final String normalized = value
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Floor plan audit saved successfully. Ready for a new scan.'),
+        content: Text('Property audit saved successfully. Ready for a new verification.'),
         backgroundColor: AppColors.green,
+      ),
+    );
+  }
+
+  void _selectInputMode(VerifyInputMode mode) {
+    setState(() {
+      selectedMode = mode;
+      if (mode == VerifyInputMode.manual && scanRooms.isEmpty) {
+        scanRooms.add(RoomData(name: 'Living Room'));
+      }
+    });
+  }
+
+  Widget _inputMethodCard({
+    required VerifyInputMode mode,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    final bool selected = selectedMode == mode;
+    return Expanded(
+      child: InkWell(
+        onTap: () => _selectInputMode(mode),
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.lightBlue : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 1.8 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: AppColors.primary, size: 25),
+                  const Spacer(),
+                  Icon(
+                    selected ? Icons.check_circle : Icons.circle_outlined,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.secondaryText,
+                    size: 21,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.dark,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 11.5,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -3248,7 +3654,7 @@ final String normalized = value
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Floor Plan', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Verify Property', style: TextStyle(fontWeight: FontWeight.w800)),
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
@@ -3266,43 +3672,93 @@ final String normalized = value
                 ),
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.document_scanner, color: Colors.white, size: 34),
-                  SizedBox(height: 12),
+                  const Icon(Icons.fact_check, color: Colors.white, size: 34),
+                  const SizedBox(height: 12),
                   Text(
-                    'Scan, review & calculate',
-                    style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),
+                    selectedMode == null
+                        ? 'How would you like to verify?'
+                        : 'Review, correct & calculate',
+                    style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),
                   ),
-                  SizedBox(height: 5),
-                  Text(
-                    'Add one or more floor-plan photos. OCR extracts dimensions, pairs them as Length × Width and calculates room areas automatically.',
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Enter measurements yourself or let OCR suggest dimensions from a floor-plan photo. You stay in control of every value.',
                     style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 18),
+            const _SectionTitle(
+              title: 'Choose an input method',
+              subtitle: 'You can switch methods without losing entered or corrected rooms.',
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: _ScanButton(
-                    icon: Icons.camera_alt,
-                    label: selectedImages.isEmpty ? 'Camera' : 'Add Camera',
-                    onTap: scanFromCamera,
-                  ),
+                _inputMethodCard(
+                  mode: VerifyInputMode.manual,
+                  icon: Icons.edit_note,
+                  title: 'Enter Manually',
+                  subtitle: 'Type room dimensions yourself.',
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _ScanButton(
-                    icon: Icons.photo_library,
-                    label: selectedImages.isEmpty ? 'Gallery' : 'Add Gallery',
-                    onTap: scanFromGallery,
-                  ),
+                _inputMethodCard(
+                  mode: VerifyInputMode.photo,
+                  icon: Icons.document_scanner_outlined,
+                  title: 'Scan Floor Plan',
+                  subtitle: 'Use OCR, then review manually.',
                 ),
               ],
             ),
+            if (selectedMode == VerifyInputMode.photo) ...[
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ScanButton(
+                      icon: Icons.camera_alt,
+                      label: selectedImages.isEmpty ? 'Camera' : 'Add Camera',
+                      onTap: scanFromCamera,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ScanButton(
+                      icon: Icons.photo_library,
+                      label: selectedImages.isEmpty ? 'Gallery' : 'Add Gallery',
+                      onTap: scanFromGallery,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFF4D47A)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.warning_amber_outlined, color: AppColors.orange),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'OCR suggestions may be incomplete or inaccurate when a photo is blurred, angled or unclear. Review, rename, correct or add rooms manually before saving.',
+                        style: TextStyle(fontSize: 12, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (selectedMode != null) ...[
             if (isProcessing) ...[
               const SizedBox(height: 20),
               const Center(child: CircularProgressIndicator()),
@@ -3311,45 +3767,113 @@ final String normalized = value
               const SizedBox(height: 20),
               _photoStrip(),
             ],
-            if (parsedDimensions.isNotEmpty) ...[
+            if (selectedImages.isNotEmpty) ...[
               const SizedBox(height: 24),
-              const _SectionTitle(
-                title: 'OCR dimensions',
-                subtitle:
-                'Tap Review & Edit if OCR misread a value. Dimensions are paired in sequence for automatic area calculation.',
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: parsedDimensions.entries.map((entry) {
-                  return Chip(
-                    avatar: const Icon(Icons.straighten, size: 17),
-                    label: Text('${entry.key}: ${entry.value}'),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
+              Container(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: reviewAndEditScan,
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Review & Edit OCR Dimensions'),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: AppColors.lightBlue,
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: const Icon(
+                            Icons.straighten,
+                            color: AppColors.primary,
+                            size: 21,
+                          ),
+                        ),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Measurements from photos',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.dark,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                parsedDimensions.isEmpty
+                                    ? 'No complete measurements detected. Enter them manually to calculate.'
+                                    : '${parsedDimensions.length} dimension value(s) detected • ${parsedDimensions.length ~/ 2} room pair(s)',
+                                style: const TextStyle(
+                                  color: AppColors.secondaryText,
+                                  fontSize: 11.5,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (parsedDimensions.isNotEmpty) ...[
+                      const SizedBox(height: 13),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: parsedDimensions.entries.map((entry) {
+                          return Chip(
+                            avatar: const Icon(Icons.straighten, size: 16),
+                            label: Text('${entry.key}: ${entry.value}'),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 13),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: reviewAndEditScan,
+                        icon: const Icon(Icons.edit_note),
+                        label: Text(
+                          parsedDimensions.isEmpty
+                              ? 'Enter Measurements & Calculate'
+                              : 'Review, Edit & Calculate',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
             const SizedBox(height: 24),
-            _CalculatorHeader(usableArea: usableArea),
-            const SizedBox(height: 20),
+            if (selectedMode == VerifyInputMode.photo) ...[
+              _CalculatorHeader(usableArea: usableArea),
+              const SizedBox(height: 20),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Rooms / Spaces',
                         style: TextStyle(
                           fontSize: 18,
@@ -3357,10 +3881,12 @@ final String normalized = value
                           color: AppColors.dark,
                         ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        'OCR values are filled automatically. Correct any field or add missing rooms manually.',
-                        style: TextStyle(
+                        selectedMode == VerifyInputMode.photo
+                            ? 'OCR suggestions remain fully editable. Correct any field or add missing rooms manually.'
+                            : 'Enter each room yourself. You can switch to Scan Floor Plan later without losing your work.',
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.secondaryText,
                           height: 1.35,
@@ -3399,9 +3925,27 @@ final String normalized = value
                   room: scanRooms[index],
                   roomNumber: index + 1,
                   onDelete: () => _removeRoom(index),
-                  onChanged: () => setState(() {}),
+                  requiresConfirmation: scanRooms[index].isAutoExtracted,
+                  isConfirmed: scanRooms[index].isUserVerified,
+                  onConfirm: () {
+                    setState(() {
+                      scanRooms[index].isUserVerified = true;
+                    });
+                  },
+                  onChanged: () {
+                    setState(() {
+                      final RoomData room = scanRooms[index];
+                      if (room.sourcePairId != null) {
+                        room.isUserVerified = true;
+                      }
+                    });
+                  },
                 ),
               ),
+            if (selectedMode == VerifyInputMode.manual) ...[
+              const SizedBox(height: 18),
+              _CalculatorHeader(usableArea: usableArea),
+            ],
             const SizedBox(height: 18),
             const _SectionTitle(
               title: 'Wall assumptions',
@@ -3470,6 +4014,7 @@ final String normalized = value
               highlighted: true,
             ),
             const SizedBox(height: 16),
+            if (selectedMode == VerifyInputMode.photo || scanPhotos.isNotEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(17),
@@ -3537,6 +4082,7 @@ final String normalized = value
                 ),
               ),
             ),
+            ],
           ],
         ),
       ),
@@ -4598,7 +5144,7 @@ class SavedAuditReportScreen
 
             const SizedBox(height: 20),
 
-            if (isCalculator)
+            if (data['rooms'] is List && (data['rooms'] as List).isNotEmpty)
               SizedBox(
                 width: double.infinity,
                 child:
@@ -4644,7 +5190,7 @@ class SavedAuditReportScreen
                 ),
               ),
 
-            if (isCalculator)
+            if (data['rooms'] is List && (data['rooms'] as List).isNotEmpty)
               const SizedBox(height: 10),
 
             SizedBox(
@@ -5575,52 +6121,276 @@ class AuditPdfPreviewScreen extends StatefulWidget {
 }
 
 class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
+  Future<void> _sharePdf() async {
+    final Uint8List pdf = await _generatePdf();
+    await Printing.sharePdf(
+      bytes: pdf,
+      filename: '${widget.data['auditName'] ?? 'audit'}.pdf',
+    );
+  }
+
+  Future<void> _printPdf() async {
+    await Printing.layoutPdf(
+      name: widget.data['auditName']?.toString() ?? 'Flatverify.ai Audit',
+      onLayout: (_) => _generatePdf(),
+    );
+  }
+
+  Widget _viewerAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(28),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text(
-          'PDF Preview',
-          style: TextStyle(
+        automaticallyImplyLeading: false,
+        leadingWidth: 72,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 14, top: 7, bottom: 7),
+          child: Material(
+            color: const Color(0xFF202126),
+            shape: const CircleBorder(),
+            child: IconButton(
+              tooltip: 'Back',
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            ),
+          ),
+        ),
+        title: Text(
+          widget.data['auditName']?.toString() ?? 'Flatverify.ai Report',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
             fontWeight: FontWeight.w800,
           ),
         ),
-        backgroundColor: AppColors.background,
+        centerTitle: true,
+        backgroundColor: Colors.black,
         elevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Share PDF',
-            onPressed: () async {
-              final pdf = await _generatePdf();
-              await Printing.sharePdf(
-                bytes: pdf,
-                filename: '${widget.data['auditName'] ?? 'audit'}.pdf',
-              );
-            },
-            icon: const Icon(Icons.share),
-          ),
-        ],
       ),
-      body: PdfPreview(
-        build: (_) => _generatePdf(),
+      body: Container(
+        color: Colors.black,
+        padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+        child: PdfPreview(
+          build: (_) => _generatePdf(),
+          allowPrinting: false,
+          allowSharing: false,
+          canChangeOrientation: false,
+          canChangePageFormat: false,
+          canDebug: false,
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          color: Colors.black,
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF202126),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: _viewerAction(
+                  icon: Icons.print_outlined,
+                  label: 'Print',
+                  onTap: _printPdf,
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF202126),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: _viewerAction(
+                  icon: Icons.ios_share,
+                  label: 'Share',
+                  onTap: _sharePdf,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Future<Uint8List> _generatePdf() async {
     final pdf = pw.Document();
+    final List<_PdfScanEvidence> scanEvidence =
+        await _loadScanEvidenceImages();
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => _buildPdfPages(context),
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          buildBackground: (_) => _buildPdfWatermark(),
+        ),
+        build: (context) => _buildPdfPages(context, scanEvidence),
       ),
     );
 
     return pdf.save();
   }
 
-  List<pw.Widget> _buildPdfPages(pw.Context context) {
+  pw.Widget _buildPdfWatermark() {
+    return pw.Center(
+      child: pw.Transform.rotate(
+        angle: -0.55,
+        child: pw.Column(
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              'Flatverify.ai',
+              style: pw.TextStyle(
+                fontSize: 46,
+                fontWeight: pw.FontWeight.bold,
+                color: const PdfColor(
+                  36 / 255,
+                  87 / 255,
+                  214 / 255,
+                  0.012,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 5),
+            pw.Text(
+              'Understand Your Property',
+              style: const pw.TextStyle(
+                fontSize: 13,
+                color: PdfColor(
+                  23 / 255,
+                  32 / 255,
+                  51 / 255,
+                  0.012,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Uint8List? _coerceImageBytes(dynamic value) {
+    Uint8List? bytes;
+    if (value is Uint8List) {
+      bytes = value;
+    } else if (value is ByteData) {
+      bytes = value.buffer.asUint8List(
+        value.offsetInBytes,
+        value.lengthInBytes,
+      );
+    } else if (value is List<int>) {
+      bytes = Uint8List.fromList(value);
+    } else if (value is List) {
+      final List<int> converted = [];
+      for (final item in value) {
+        if (item is! num || item < 0 || item > 255) return null;
+        converted.add(item.toInt());
+      }
+      bytes = Uint8List.fromList(converted);
+    }
+    if (bytes == null || bytes.length < 8) return null;
+    final bool isJpeg = bytes[0] == 0xFF && bytes[1] == 0xD8;
+    final bool isPng = bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47;
+    return isJpeg || isPng ? bytes : null;
+  }
+
+  Future<Uint8List?> _readImagePath(dynamic pathValue) async {
+    final String path = pathValue?.toString() ?? '';
+    if (path.trim().isEmpty) return null;
+    try {
+      return _coerceImageBytes(await File(path).readAsBytes());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<_PdfScanEvidence>> _loadScanEvidenceImages() async {
+    if (widget.data['type']?.toString() != 'scan') return [];
+    final List<_PdfScanEvidence> evidence = [];
+    final dynamic savedPhotosValue = widget.data['scanPhotos'];
+    if (savedPhotosValue is List && savedPhotosValue.isNotEmpty) {
+      for (final dynamic item in savedPhotosValue) {
+        if (item is! Map) continue;
+        Uint8List? bytes = _coerceImageBytes(item['imageBytes']);
+        bytes ??= await _readImagePath(item['originalPath']);
+        if (bytes != null) {
+          evidence.add(_PdfScanEvidence(
+            bytes,
+            item['ocrText']?.toString() ?? '',
+          ));
+        }
+      }
+      if (evidence.isNotEmpty) return evidence;
+    }
+
+    final dynamic bytesValue = widget.data['imageBytes'];
+    final List<dynamic> storedBytes = _coerceImageBytes(bytesValue) != null
+        ? <dynamic>[bytesValue]
+        : (bytesValue is List ? List<dynamic>.from(bytesValue) : []);
+    final dynamic pathsValue = widget.data['imagePaths'];
+    final List<dynamic> paths = pathsValue is List
+        ? List<dynamic>.from(pathsValue)
+        : (pathsValue is String && pathsValue.trim().isNotEmpty
+            ? <dynamic>[pathsValue]
+            : []);
+    final int count = storedBytes.length > paths.length
+        ? storedBytes.length
+        : paths.length;
+    for (int i = 0; i < count; i++) {
+      Uint8List? bytes =
+          i < storedBytes.length ? _coerceImageBytes(storedBytes[i]) : null;
+      bytes ??= i < paths.length ? await _readImagePath(paths[i]) : null;
+      if (bytes != null) evidence.add(_PdfScanEvidence(bytes, ''));
+    }
+    if (evidence.isEmpty) {
+      final Uint8List? legacy = await _readImagePath(widget.data['imagePath']);
+      if (legacy != null) evidence.add(_PdfScanEvidence(legacy, ''));
+    }
+    return evidence;
+  }
+
+  List<pw.Widget> _buildPdfPages(
+    pw.Context context,
+    List<_PdfScanEvidence> scanEvidence,
+  ) {
     final List<pw.Widget> pages = [];
 
     // Page 1: Property Info & Area Summary
@@ -5636,7 +6406,11 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
           pw.SizedBox(height: 20),
           _buildPdfRoomTable(),
           pw.SizedBox(height: 20),
+          _buildPdfCalculationMethod(),
+          pw.SizedBox(height: 20),
           _buildPdfAssumptions(),
+          pw.SizedBox(height: 20),
+          _buildPdfVerificationDisclaimer(),
         ],
       ),
     );
@@ -5644,19 +6418,13 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
     // Additional pages for floor plan photos (if scan)
     final bool isScan = widget.data['type']?.toString() == 'scan';
     if (isScan) {
-      final List<Uint8List> imageBytes =
-          (widget.data['imageBytes'] as List<dynamic>?)
-                  ?.whereType<Uint8List>()
-                  .toList() ??
-              [];
-
-      for (int i = 0; i < imageBytes.length; i++) {
+      for (int i = 0; i < scanEvidence.length; i++) {
         pages.add(
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                'Floor Plan Photo ${i + 1}',
+                'Scanned Floor Plan Photos - Photo ${i + 1}',
                 style: pw.TextStyle(
                   fontSize: 18,
                   fontWeight: pw.FontWeight.bold,
@@ -5666,33 +6434,21 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
               pw.SizedBox(height: 15),
               pw.Container(
                 width: double.infinity,
+                height: 650,
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey300),
                   borderRadius: pw.BorderRadius.circular(8),
                 ),
                 child: pw.Image(
-                  pw.MemoryImage(imageBytes[i]),
+                  pw.MemoryImage(scanEvidence[i].bytes),
                   fit: pw.BoxFit.contain,
                 ),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Text(
-                'OCR Evidence',
-                style: pw.TextStyle(
-                  fontSize: 16,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blue800,
-                ),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Text(
-                widget.data['rawText']?.toString() ?? 'No OCR text available',
-                style: const pw.TextStyle(fontSize: 10),
               ),
             ],
           ),
         );
       }
+      pages.add(_buildPdfScanInformation(scanEvidence));
     }
 
     return pages;
@@ -5920,6 +6676,118 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  pw.Widget _buildPdfCalculationMethod() {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(15),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'Calculation Method',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue900,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'Carpet / usable area is the sum of verified room areas. '
+            'Built-up area = usable area + internal wall area. '
+            'Loading area = built-up area x loading percentage. '
+            'Super built-up area = built-up area + external wall area + loading area.',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfVerificationDisclaimer() {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: PdfColor.fromHex('FFFBEB'),
+        border: pw.Border.all(color: PdfColor.fromHex('F4D47A')),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Text(
+        'Verification notice: OCR suggestions can be affected by image quality '
+        'and are not guaranteed property measurements. This report records the '
+        'values reviewed by the user. Confirm critical measurements and legal '
+        'area definitions with qualified professionals.',
+        style: pw.TextStyle(
+          fontSize: 9,
+          color: PdfColor.fromHex('6B5A20'),
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfScanInformation(List<_PdfScanEvidence> evidence) {
+    final dynamic dimensionsValue = widget.data['parsedDimensions'];
+    final int dimensionCount =
+        dimensionsValue is Map ? dimensionsValue.length : 0;
+    final List<String> photoTexts = evidence
+        .map((item) => item.ocrText.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+    final String legacyText = widget.data['rawText']?.toString().trim() ?? '';
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'OCR / Scan Information',
+          style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue900,
+          ),
+        ),
+        pw.SizedBox(height: 10),
+        pw.Text(
+          '${evidence.length} readable floor-plan photo(s); '
+          '$dimensionCount extracted dimension value(s).',
+          style: const pw.TextStyle(fontSize: 10),
+        ),
+        pw.SizedBox(height: 12),
+        if (photoTexts.isNotEmpty)
+          ...List.generate(photoTexts.length, (index) {
+            return pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 12),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Photo ${index + 1} OCR text',
+                    style: pw.TextStyle(
+                      fontSize: 11,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(photoTexts[index],
+                      style: const pw.TextStyle(fontSize: 9)),
+                ],
+              ),
+            );
+          })
+        else
+          pw.Text(
+            legacyText.isEmpty ? 'No OCR text was retained.' : legacyText,
+            style: const pw.TextStyle(fontSize: 9),
+          ),
+        pw.SizedBox(height: 12),
+        _buildPdfVerificationDisclaimer(),
+      ],
     );
   }
 

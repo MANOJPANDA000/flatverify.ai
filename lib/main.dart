@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -100,16 +101,14 @@ class FLogo extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
+            Color(0xFF172B65),
             Color(0xFF2457D6),
-            Color(0xFF4D7CF0),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(size * 0.25),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.25),
+            color: AppColors.primary.withValues(alpha: 0.25),
             blurRadius: 12,
             offset: const Offset(0, 5),
           ),
@@ -313,7 +312,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     'Calculate carpet area, walls, built-up area and loading.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(.88),
+                      color: Colors.white.withValues(alpha: .88),
                       fontSize: 14,
                       height: 1.4,
                     ),
@@ -692,7 +691,7 @@ class DimensionParser {
       return '${wholeMeters + 1} m 0 cm';
     }
 
-    return '${wholeMeters} m ${centimeters.toStringAsFixed(1)} cm';
+    return '$wholeMeters m ${centimeters.toStringAsFixed(1)} cm';
   }
 }
 
@@ -826,7 +825,7 @@ Future<Map<String, String>?> showAuditDetailsDialog(
                       Expanded(
                         child:
                         DropdownButtonFormField<String>(
-                          value: configuration,
+                          initialValue: configuration,
                           isExpanded: true,
                           decoration:
                           const InputDecoration(
@@ -1468,7 +1467,7 @@ class _CalculatorHeader
             height: 52,
             decoration: BoxDecoration(
               color:
-              Colors.white.withOpacity(.15),
+              Colors.white.withValues(alpha: .15),
               borderRadius:
               BorderRadius.circular(15),
             ),
@@ -1498,7 +1497,7 @@ class _CalculatorHeader
                   '${DimensionParser.format(usableArea)} sq ft calculated carpet area',
                   style: TextStyle(
                     color:
-                    Colors.white.withOpacity(.82),
+                    Colors.white.withValues(alpha: .82),
                     fontSize: 12.5,
                   ),
                 ),
@@ -1977,7 +1976,7 @@ class _RoomCardState
               ? [
             BoxShadow(
               color:
-              Colors.black.withOpacity(.06),
+              Colors.black.withValues(alpha: .06),
               blurRadius: 5,
               offset:
               const Offset(0, 2),
@@ -2003,13 +2002,13 @@ class _RoomCardState
   }
 
   Widget _roomNameSelector() {
-    final String? selectedValue =
+    final String selectedValue =
     dropdownValues.contains(widget.room.name)
         ? widget.room.name
         : customRoomOption;
 
     return DropdownButtonFormField<String>(
-      value: selectedValue,
+      initialValue: selectedValue,
       isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Room / Space',
@@ -3610,7 +3609,7 @@ final String normalized = value
                     top: 4,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(.62),
+                        color: Colors.black.withValues(alpha: .62),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -4208,7 +4207,7 @@ class _ScanReviewItemState
           const SizedBox(height: 8),
 
           DropdownButtonFormField<String>(
-            value:
+            initialValue:
             allRoomNames.contains(
               selectedName,
             )
@@ -5034,7 +5033,7 @@ class SavedAuditReportScreen
         actions: [
           IconButton(
             tooltip:
-            'Preview PDF',
+            'Preview',
             onPressed: () =>
                 previewPdf(context),
             icon: const Icon(
@@ -5203,7 +5202,7 @@ class SavedAuditReportScreen
                   Icons.picture_as_pdf_outlined,
                 ),
                 label: const Text(
-                  'Preview PDF',
+                  'Preview',
                   style: TextStyle(
                     fontWeight:
                     FontWeight.w800,
@@ -6121,6 +6120,42 @@ class AuditPdfPreviewScreen extends StatefulWidget {
 }
 
 class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
+  bool _isDownloading = false;
+
+  Future<void> _downloadPdf() async {
+    if (_isDownloading) return;
+    setState(() => _isDownloading = true);
+    try {
+      final Uint8List bytes = await _generatePdf();
+      if (!mounted) return;
+      final String auditName = (widget.data['auditName']?.toString() ?? 'audit')
+          .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+          .trim();
+      final String baseName = auditName.isEmpty ? 'audit' : auditName;
+      final String fileName = baseName.toLowerCase().endsWith('.pdf')
+          ? baseName
+          : '$baseName.pdf';
+      final Uri? savedFile = await FilePicker.saveFile(
+        dialogTitle: 'Save report',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        bytes: bytes,
+      );
+      if (!mounted || savedFile == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report saved successfully.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save the report. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
   Future<void> _sharePdf() async {
     final Uint8List pdf = await _generatePdf();
     await Printing.sharePdf(
@@ -6139,7 +6174,7 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
   Widget _viewerAction({
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return InkWell(
       onTap: onTap,
@@ -6213,8 +6248,10 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
         child: Container(
           color: Colors.black,
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               Container(
                 decoration: BoxDecoration(
@@ -6226,6 +6263,18 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
                   icon: Icons.print_outlined,
                   label: 'Print',
                   onTap: _printPdf,
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF202126),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: _viewerAction(
+                  icon: Icons.download_outlined,
+                  label: _isDownloading ? 'Saving...' : 'Download',
+                  onTap: _isDownloading ? null : _downloadPdf,
                 ),
               ),
               Container(
@@ -6275,27 +6324,17 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
             pw.Text(
               'Flatverify.ai',
               style: pw.TextStyle(
-                fontSize: 46,
+                fontSize: 54,
                 fontWeight: pw.FontWeight.bold,
-                color: const PdfColor(
-                  36 / 255,
-                  87 / 255,
-                  214 / 255,
-                  0.012,
-                ),
+                color: PdfColors.grey200,
               ),
             ),
             pw.SizedBox(height: 5),
             pw.Text(
               'Understand Your Property',
               style: const pw.TextStyle(
-                fontSize: 13,
-                color: PdfColor(
-                  23 / 255,
-                  32 / 255,
-                  51 / 255,
-                  0.012,
-                ),
+                fontSize: 16,
+                color: PdfColors.grey200,
               ),
             ),
           ],

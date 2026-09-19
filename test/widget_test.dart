@@ -13,15 +13,14 @@ import 'package:my_first_app/main.dart';
 void main() {
   testWidgets('Flatverify home screen smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: HomeScreen(),
-        ),
-      ),
+      const MaterialApp(home: Scaffold(body: HomeScreen())),
     );
 
     expect(find.text('Flatverify.ai'), findsOneWidget);
-    expect(find.text('Understand Your Property'), findsOneWidget);
-    expect(find.text('Start calculation'), findsOneWidget);
+    expect(
+      find.text('Clear measurements. Confident decisions.'),
+      findsOneWidget,
+    );
+    expect(find.text('Enter Measurements'), findsOneWidget);
   });
 }

@@ -53,4 +53,8 @@ app.*.map.json
 *.zip
 
 /android/app/build/
+/android/.kotlin/
 **/build/
+
+# Local Firebase environment configuration
+/config/firebase.json

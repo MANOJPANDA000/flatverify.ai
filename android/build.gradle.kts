@@ -1,24 +1,15 @@
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.secrets) apply false
+}
+
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
-}
-
-val newBuildDir = rootProject.layout.projectDirectory
-    .dir("../build")
-
-rootProject.layout.buildDirectory.set(newBuildDir)
-
-subprojects {
-    val newSubprojectBuildDir = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.set(newSubprojectBuildDir)
-}
-
-subprojects {
-    project.evaluationDependsOn(":app")
-}
-
-tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
 }

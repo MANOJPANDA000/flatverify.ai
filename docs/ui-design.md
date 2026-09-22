@@ -1,7 +1,8 @@
 # Interface design
 
-The main Flutter screens follow the approved Google AI Studio web design from
-`flatverify.ai.zip` (the matching React reference is in `src/`).
+The main Flutter screens were adapted from the approved Google AI Studio web
+design. The older React reference and standalone app generator have been removed
+from this branch; the current application is implemented in `lib/`.
 Real saved reports, room names, measurements and confirmation state drive the UI;
 the example account photo, dates and reports from the draft are not seeded data.
 

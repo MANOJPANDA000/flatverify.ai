@@ -124,6 +124,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 ),
                 const SizedBox(height: 24),
                 if (error != null) CheckHint(error!, warning: true),
+                if (SessionController.instance.user != null &&
+                    !SessionController.instance.biometricEnabled) ...[
+                  FilledButton(
+                    onPressed: busy
+                        ? null
+                        : SessionController.instance.continueRestoredSession,
+                    child: const Text('Continue to My Account'),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 FilledButton(
                   onPressed: busy ? null : () => openSignIn(context),
                   child: const Text('Sign In'),

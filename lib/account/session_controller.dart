@@ -88,7 +88,8 @@ class SessionController extends ChangeNotifier {
     reports = guestReports;
     user = null;
     credentialAuthenticated = false;
-    entered = preferences?.get('sessionMode') == 'guest';
+    // Each fresh launch starts at Welcome, independently of saved session data.
+    entered = false;
     const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
     const appId = String.fromEnvironment('FIREBASE_APP_ID');
     const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
@@ -145,7 +146,13 @@ class SessionController extends ChangeNotifier {
       await auth?.signOut();
       return;
     }
-    await activateUser(restored, fromCredentials: false);
+    await activateUser(restored, fromCredentials: false, enterApp: false);
+  }
+
+  void continueRestoredSession() {
+    if (user == null || biometricEnabled) return;
+    entered = true;
+    notifyListeners();
   }
 
   Future<String?> biometricButtonLabel() async =>
@@ -204,6 +211,7 @@ class SessionController extends ChangeNotifier {
   Future<void> activateUser(
     User authenticated, {
     bool fromCredentials = true,
+    bool enterApp = true,
   }) async {
     if (!authenticated.emailVerified && authenticated.phoneNumber == null) {
       throw StateError(
@@ -224,7 +232,7 @@ class SessionController extends ChangeNotifier {
     credentialAuthenticated = fromCredentials;
     reports = box;
     await preferences?.put('sessionMode', 'account');
-    entered = true;
+    entered = enterApp;
     notifyListeners();
   }
 

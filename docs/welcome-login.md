@@ -36,7 +36,10 @@ before access is granted. Unavailable sensors, cancellation, lockout and expired
 sessions retain the password fallback. This is an application access gate, not
 biometric encryption of the local report database.
 
-Remember Me controls account restoration. Guest access persists across restarts.
+Every fresh app launch starts at Welcome. Remember Me restores the account behind
+that screen, with Continue to My Account for an unlocked remembered session.
+Guest users choose Continue as Guest on each launch; saved reports persist.
+Returning from the camera, a file picker or another app does not reset navigation.
 Logout clears the biometric enrollment and Firebase session while preserving
 saved local reports. Guest calculations are stored on this device and can be lost
 when app data is cleared or the app is removed. Cloud synchronization is absent.

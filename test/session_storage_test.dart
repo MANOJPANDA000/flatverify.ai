@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:my_first_app/account/session_controller.dart';
+import 'auth_fakes.dart';
 
 void main() {
   late Directory directory;
@@ -17,7 +18,7 @@ void main() {
   });
 
   test(
-    'new app session restores guest access and preserves all saved reports',
+    'new app session shows welcome and preserves all saved reports',
     () async {
       final first = SessionController();
       await first.initialize();
@@ -35,11 +36,44 @@ void main() {
       final second = SessionController();
       await second.initialize();
       expect(second.reports.length, 1);
-      expect(second.entered, isTrue);
+      expect(second.entered, isFalse);
       expect((await Hive.openBox('account_test_reports')).length, 1);
       expect((await Hive.openBox('local_audits')).length, 1);
     },
   );
+
+  test('existing guests see welcome every launch without losing reports', () async {
+    final preferences = await Hive.openBox('account_preferences');
+    await preferences.put('sessionMode', 'guest');
+    final reports = await Hive.openBox('guest_session_reports');
+    await reports.add({'auditName': 'Existing report'});
+
+    final upgraded = SessionController();
+    await upgraded.initialize();
+    expect(upgraded.entered, isFalse);
+    expect(upgraded.reports.values.single['auditName'], 'Existing report');
+
+    await upgraded.enterGuest();
+    expect(upgraded.entered, isTrue);
+    await Hive.close();
+
+    final restarted = SessionController();
+    await restarted.initialize();
+    expect(restarted.entered, isFalse);
+    expect(restarted.reports.values.single['auditName'], 'Existing report');
+  });
+
+  test('remembered account waits at welcome until Continue is selected', () async {
+    final session = SessionController();
+    await session.initialize();
+    await session.preferences!.put('sessionMode', 'account');
+    final user = TestUser();
+    await session.restoreUser(user);
+    expect(session.user, user);
+    expect(session.entered, isFalse);
+    session.continueRestoredSession();
+    expect(session.entered, isTrue);
+  });
 
   test('guest transfer keeps data and does not duplicate on retry', () async {
     final guest = await Hive.openBox('guest');

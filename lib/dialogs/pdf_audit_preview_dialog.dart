@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/rera_room_model.dart';
 import '../services/rera_calculator_service.dart';
 
@@ -64,7 +64,11 @@ class PdfAuditPreviewDialog extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.verified_outlined, color: Color(0xFF2563EB), size: 20),
+                  Icon(
+                    Icons.verified_outlined,
+                    color: Color(0xFF2563EB),
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Statutory Audit Certificate',
@@ -110,49 +114,106 @@ class PdfAuditPreviewDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'RERA Compliance Certificate â€¢ Act Section 2(k)',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+                      'RERA Compliance Certificate • Act Section 2(k)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF2563EB),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _summaryRow('RERA Carpet Area', ReraAuditCalculation.formatArea(audit.reraCarpetAreaSqFt, displayUnit), isBold: true, color: const Color(0xFF2563EB)),
-                    _summaryRow('Exclusive Balconies', ReraAuditCalculation.formatArea(audit.balconySqFt, displayUnit)),
-                    _summaryRow('Dry Balconies (Outside)', ReraAuditCalculation.formatArea(audit.utilityOutsideSqFt, displayUnit)),
-                    _summaryRow('Built-Up (Plinth) Area', ReraAuditCalculation.formatArea(audit.builtUpAreaSqFt, displayUnit), isBold: true),
-                    _summaryRow('Super Built-Up Area', ReraAuditCalculation.formatArea(audit.superBuiltUpAreaSqFt, displayUnit), isBold: true, color: const Color(0xFF7C3AED)),
-                    _summaryRow('Carpet Efficiency Ratio', '${audit.efficiencyRatioPercent.toStringAsFixed(1)}%'),
+                    _summaryRow(
+                      'RERA Carpet Area',
+                      ReraAuditCalculation.formatArea(
+                        audit.reraCarpetAreaSqFt,
+                        displayUnit,
+                      ),
+                      isBold: true,
+                      color: const Color(0xFF2563EB),
+                    ),
+                    _summaryRow(
+                      'Exclusive Balconies',
+                      ReraAuditCalculation.formatArea(
+                        audit.balconySqFt,
+                        displayUnit,
+                      ),
+                    ),
+                    _summaryRow(
+                      'Dry Balconies (Outside)',
+                      ReraAuditCalculation.formatArea(
+                        audit.utilityOutsideSqFt,
+                        displayUnit,
+                      ),
+                    ),
+                    _summaryRow(
+                      'Built-Up (Plinth) Area',
+                      ReraAuditCalculation.formatArea(
+                        audit.builtUpAreaSqFt,
+                        displayUnit,
+                      ),
+                      isBold: true,
+                    ),
+                    _summaryRow(
+                      'Super Built-Up Area',
+                      ReraAuditCalculation.formatArea(
+                        audit.superBuiltUpAreaSqFt,
+                        displayUnit,
+                      ),
+                      isBold: true,
+                      color: const Color(0xFF7C3AED),
+                    ),
+                    _summaryRow(
+                      'Carpet Efficiency Ratio',
+                      '${audit.efficiencyRatioPercent.toStringAsFixed(1)}%',
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
                 'Room Space Schedule',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               const SizedBox(height: 8),
-              ...rooms.map((r) => Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            r.name,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ...rooms.map(
+                (r) => Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          r.name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          '${r.length}Ã—${r.width} (${ReraAuditCalculation.formatArea(r.areaSqFt, displayUnit)})',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                      Text(
+                        '${r.length}×${r.width} (${ReraAuditCalculation.formatArea(r.areaSqFt, displayUnit)})',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
                         ),
-                      ],
-                    ),
-                  )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
             ],
           ),
@@ -161,7 +222,12 @@ class PdfAuditPreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _summaryRow(String label, String value, {bool isBold = false, Color? color}) {
+  Widget _summaryRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -188,4 +254,3 @@ class PdfAuditPreviewDialog extends StatelessWidget {
     );
   }
 }
-

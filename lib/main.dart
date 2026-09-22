@@ -1,12 +1,16 @@
 import 'dart:io';
+import 'area_check/area_check_app.dart';
 import 'branding.dart';
 import 'app_theme.dart';
+import 'studio_ui.dart';
+import 'dialogs/rera_definitions_sheet.dart';
 export 'branding.dart';
 import 'account/session_controller.dart';
 import 'account/account_screens.dart';
 import 'account/profile_widgets.dart';
 
 import 'dimension_scan_parser.dart';
+import 'screens/rera_calculator_screen.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -22,6 +26,7 @@ part 'home_dashboard.dart';
 part 'scan_room_card.dart';
 part 'verification_widgets.dart';
 part 'report_units.dart';
+part 'area_adjustment.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +36,7 @@ void main() async {
     'local_audits',
   ); // Preserve existing reports during migration.
   await SessionController.instance.initialize();
+  StudioSettings.instance.restore();
 
   runApp(const FAreaApp());
 }
@@ -60,7 +66,17 @@ class FAreaApp extends StatelessWidget {
           ),
         ),
       ),
-      home: SessionGateway(appBuilder: (_) => const MainNavigationScreen()),
+      home: SessionGateway(
+        appBuilder: (_) => AreaCheckApp(
+          floorPlanBuilder: (_) =>
+              const OcrScannerScreen(initialMode: VerifyInputMode.photo),
+          legacySavedBuilder: (_) => const SavedAuditsScreen(),
+          accountBuilder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Account')),
+            body: const AccountScreen(),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -80,54 +96,193 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int selectedIndex = 0;
   final _scannerKey = GlobalKey<_OcrScannerScreenState>();
 
+  void selectPage(int index) => setState(() => selectedIndex = index);
+
   void openVerification(VerifyInputMode mode) {
     _scannerKey.currentState?._selectInputMode(mode);
-    setState(() => selectedIndex = 1);
+    setState(() => selectedIndex = 2);
   }
 
   late final List<Widget> pages = [
     const HomeScreen(),
-    OcrScannerScreen(key: _scannerKey),
+    const StandaloneCalculatorPage(),
+    OcrScannerScreen(key: _scannerKey, initialMode: VerifyInputMode.photo),
     const SavedAuditsScreen(),
     const AccountScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(index: selectedIndex, children: pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: AppColors.lightBlue,
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+    const labels = [
+      'Dashboard',
+      'Calculator',
+      'Scan Blueprint',
+      'Saved Audits',
+      'Settings',
+    ];
+    const icons = [
+      Icons.dashboard_outlined,
+      Icons.calculate_outlined,
+      Icons.document_scanner_outlined,
+      Icons.folder_outlined,
+      Icons.person_outline,
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 1000;
+        return Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(80),
+            child: SafeArea(
+              bottom: false,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: Row(
+                  children: [
+                    if (wide)
+                      const SizedBox(
+                        width: 210,
+                        child: BrandHeader(compact: true),
+                      )
+                    else
+                      const Expanded(child: BrandHeader(compact: true)),
+                    if (wide) ...[
+                      Expanded(
+                        flex: 5,
+                        child: Row(
+                          children: List.generate(
+                            labels.length,
+                            (index) => Expanded(
+                              child: Tooltip(
+                                message: labels[index],
+                                child: TextButton(
+                                  onPressed: () =>
+                                      setState(() => selectedIndex = index),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: selectedIndex == index
+                                        ? AppColors.lightBlue
+                                        : null,
+                                    foregroundColor: selectedIndex == index
+                                        ? AppColors.primary
+                                        : AppColors.secondaryText,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(icons[index], size: 16),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          labels[index],
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    if (constraints.maxWidth >= 1200)
+                      const StudioUnitControl()
+                    else
+                      IconButton(
+                        tooltip: 'Display units',
+                        icon: const Icon(
+                          Icons.square_foot,
+                          color: AppColors.primary,
+                        ),
+                        onPressed: () => showModalBottomSheet<void>(
+                          context: context,
+                          builder: (_) => SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Area display units',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  StudioUnitControl(
+                                    onChanged: (value) {
+                                      _scannerKey.currentState
+                                          ?.selectDisplayUnit(
+                                            value == StudioAreaUnit.metric
+                                                ? AreaDisplayUnit.metric
+                                                : AreaDisplayUnit.imperial,
+                                          );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    IconButton(
+                      tooltip: 'Settings & Account',
+                      onPressed: () => setState(() => selectedIndex = 4),
+                      icon: ProfileAvatar(
+                        user: SessionController.instance.user,
+                        size: 32,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.fact_check_outlined),
-            selectedIcon: Icon(Icons.fact_check),
-            label: 'Verify',
+          body: StudioShellScope(
+            child: IndexedStack(index: selectedIndex, children: pages),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: SessionController.instance.isGuest ? 'Reports' : 'Saved',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Account',
-          ),
-        ],
-      ),
+          bottomNavigationBar: wide
+              ? null
+              : NavigationBar(
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) =>
+                      setState(() => selectedIndex = index),
+                  backgroundColor: Colors.white,
+                  indicatorColor: AppColors.lightBlue,
+                  destinations: List.generate(
+                    labels.length,
+                    (index) => NavigationDestination(
+                      icon: Icon(icons[index]),
+                      label: [
+                        'Home',
+                        'Calculator',
+                        'Scan',
+                        'Audits',
+                        'Settings',
+                      ][index],
+                    ),
+                  ),
+                ),
+        );
+      },
     );
   }
 }
@@ -325,10 +480,15 @@ class _ScanPhotoData {
 }
 
 class _PdfScanEvidence {
-  final Uint8List bytes;
+  final Uint8List? bytes;
   final String ocrText;
+  final List<String> dimensions;
 
-  const _PdfScanEvidence(this.bytes, this.ocrText);
+  const _PdfScanEvidence(
+    this.bytes,
+    this.ocrText, [
+    this.dimensions = const [],
+  ]);
 }
 
 // ============================================================
@@ -720,9 +880,12 @@ class StandaloneCalculatorPage extends StatefulWidget {
 class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
   final List<RoomData> rooms = [RoomData(name: 'Living Room')];
 
-  double internalWallPercent = 12.0;
-  double externalWallPercent = 0.0;
-  double loadingPercent = 30.0;
+  final internalWall = AreaAdjustment(percent: 12);
+  final externalWall = AreaAdjustment(percent: 0);
+  final loading = AreaAdjustment(percent: 30);
+  double get internalWallPercent => internalWall.percent;
+  double get externalWallPercent => externalWall.percent;
+  double get loadingPercent => loading.percent;
 
   double get usableArea {
     double totalSquareMeters = 0.0;
@@ -737,7 +900,7 @@ class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
   }
 
   double get internalWallArea {
-    return usableArea * internalWallPercent / 100.0;
+    return internalWall.areaFor(usableArea);
   }
 
   double get builtUpArea {
@@ -745,11 +908,11 @@ class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
   }
 
   double get externalWallArea {
-    return usableArea * externalWallPercent / 100.0;
+    return externalWall.areaFor(usableArea);
   }
 
   double get loadingArea {
-    return builtUpArea * loadingPercent / 100.0;
+    return loading.areaFor(builtUpArea);
   }
 
   double get superBuiltUpArea {
@@ -781,6 +944,18 @@ class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
   }
 
   Future<void> saveCalculatorAudit() async {
+    if (![
+      internalWall,
+      externalWall,
+      loading,
+    ].every((value) => value.isValid)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Correct the wall and loading values before saving.'),
+        ),
+      );
+      return;
+    }
     final details = await showAuditDetailsDialog(
       context,
       suggestedName: '${rooms.length} Areas - Flatverify.ai Calculation',
@@ -814,11 +989,14 @@ class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
       'usableArea': usableArea,
       'carpetArea': usableArea,
       'internalWallPercent': internalWallPercent,
+      ...internalWall.serialize('internalWall'),
       'internalWallArea': internalWallArea,
       'builtUpArea': builtUpArea,
       'externalWallPercent': externalWallPercent,
+      ...externalWall.serialize('externalWall'),
       'externalWallArea': externalWallArea,
       'loadingPercent': loadingPercent,
+      ...loading.serialize('loading'),
       'loadingArea': loadingArea,
       'superBuiltUpArea': superBuiltUpArea,
     });
@@ -829,9 +1007,9 @@ class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
       rooms
         ..clear()
         ..add(RoomData(name: 'Living Room'));
-      internalWallPercent = 12.0;
-      externalWallPercent = 0.0;
-      loadingPercent = 30.0;
+      internalWall.reset(12);
+      externalWall.reset(0);
+      loading.reset(30);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -845,228 +1023,285 @@ class _StandaloneCalculatorPageState extends State<StandaloneCalculatorPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Area Calculator',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-      ),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: StudioSettings.instance,
+    builder: (context, _) => Scaffold(
+      appBar: StudioShellScope.contains(context)
+          ? null
+          : AppBar(title: const Text('Area Calculator')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CalculatorHeader(
-              displayUnit: AreaDisplayUnit.imperial,
-              usableArea: usableArea,
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Rooms / Spaces',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.dark,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: addRoom,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add room'),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            ...List.generate(
-              rooms.length,
-              (index) => RoomCard(
-                key: ValueKey(rooms[index]),
-                room: rooms[index],
-                roomNumber: index + 1,
-                onDelete: () => removeRoom(index),
-                onChanged: () {
-                  setState(() {});
-                },
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            const _SectionTitle(
-              title: 'Wall assumptions',
+            StudioHeading(
+              title: 'Manual Carpet Area Calculator',
               subtitle:
-                  'Adjust these values according to your property or drawing.',
-            ),
-
-            const SizedBox(height: 12),
-
-            _PercentageInput(
-              label: 'Internal wall',
-              value: internalWallPercent,
-              onChanged: (value) {
-                setState(() {
-                  internalWallPercent = value;
-                });
-              },
-            ),
-
-            const SizedBox(height: 10),
-
-            _PercentageInput(
-              label: 'External wall / other',
-              value: externalWallPercent,
-              onChanged: (value) {
-                setState(() {
-                  externalWallPercent = value;
-                });
-              },
-            ),
-
-            const SizedBox(height: 10),
-
-            _PercentageInput(
-              label: 'Loading / common area',
-              value: loadingPercent,
-              onChanged: (value) {
-                setState(() {
-                  loadingPercent = value;
-                });
-              },
-            ),
-
-            const SizedBox(height: 22),
-
-            const _SectionTitle(
-              title: 'Area calculation',
-              subtitle: 'External wall is kept separate from built-up area.',
-            ),
-
-            const SizedBox(height: 12),
-
-            _ResultCard(
-              title: 'Calculated Carpet Area',
-              value: usableArea,
-              icon: Icons.square_foot,
-              subtitle: 'Total area of entered rooms / spaces',
-            ),
-
-            _ResultCard(
-              title: 'Internal Wall Area',
-              value: internalWallArea,
-              icon: Icons.home_work_outlined,
-              subtitle: '${internalWallPercent.toStringAsFixed(1)}% assumption',
-            ),
-
-            _ResultCard(
-              title: 'Built-up Area',
-              value: builtUpArea,
-              icon: Icons.home_outlined,
-              subtitle: 'Carpet area + internal wall area',
-              highlighted: true,
-            ),
-
-            _ResultCard(
-              title: 'External Wall / Other Area',
-              value: externalWallArea,
-              icon: Icons.domain,
-              subtitle:
-                  '${externalWallPercent.toStringAsFixed(1)}% shown separately',
-            ),
-
-            _ResultCard(
-              title: 'Loading / Common Area',
-              value: loadingArea,
-              icon: Icons.add_chart,
-              subtitle:
-                  '${loadingPercent.toStringAsFixed(1)}% of built-up area',
-            ),
-
-            _ResultCard(
-              title: 'Super Built-up / Saleable Area',
-              value: superBuiltUpArea,
-              icon: Icons.apartment,
-              subtitle: 'Built-up + external/other + loading',
-              highlighted: true,
-            ),
-
-            const SizedBox(height: 16),
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(17),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFF4D47A)),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                  'Specify room-by-room internal measurements to verify usable carpet area, built-up area, and loading.',
+              actions: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.orange),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'These calculations are estimates based on the assumptions you enter. Actual construction and legal area definitions may vary by project and applicable regulations.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.45,
-                        color: Color(0xFF6B5A20),
+                  const StudioUnitControl(),
+                  OutlinedButton.icon(
+                    onPressed: () => ReraDefinitionsSheet.show(context),
+                    icon: const Icon(Icons.help_outline, size: 18),
+                    label: const Text('Carpet vs Built-up Rules'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ReraCalculatorScreen(),
                       ),
                     ),
+                    icon: const Icon(Icons.fact_check_outlined, size: 18),
+                    label: const Text('Detailed RERA Audit'),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 18),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: saveCalculatorAudit,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text(
-                  'Save Area Audit',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+            StudioColumns(
+              main: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.grid_view_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'ROOMS & SPACES (${rooms.length})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: addRoom,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add room'),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 12),
+                  ...List.generate(
+                    rooms.length,
+                    (index) => RoomCard(
+                      key: ValueKey(rooms[index]),
+                      room: rooms[index],
+                      roomNumber: index + 1,
+                      onDelete: () => removeRoom(index),
+                      onChanged: () => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  StudioPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _SectionTitle(
+                          title: 'Wall & loading assumptions',
+                          subtitle:
+                              'Use calculated percentages or fixed values from your property documents.',
+                        ),
+                        const SizedBox(height: 18),
+                        AreaAdjustmentInput(
+                          label: 'Internal wall',
+                          adjustment: internalWall,
+                          helper: 'Added to usable area for this calculation.',
+                          onChanged: () => setState(() {}),
+                        ),
+                        const SizedBox(height: 12),
+                        AreaAdjustmentInput(
+                          label: 'External wall / other',
+                          adjustment: externalWall,
+                          helper:
+                              'Recorded separately in the saleable-area total.',
+                          onChanged: () => setState(() {}),
+                        ),
+                        const SizedBox(height: 12),
+                        AreaAdjustmentInput(
+                          label: 'Loading / common area',
+                          adjustment: loading,
+                          helper: 'Shared-area loading based on built-up area.',
+                          onChanged: () => setState(() {}),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              aside: StudioPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.analytics_outlined,
+                          color: AppColors.primary,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Area Audit Summary',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.lightBlue,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'CALCULATED CARPET AREA',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            StudioSettings.instance.area(usableArea),
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Total usable area of the entered rooms',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _summaryMetric(
+                      'Internal Wall Area',
+                      internalWallArea,
+                      internalWall.sourceLabel,
+                    ),
+                    _summaryMetric(
+                      'Built-up Area',
+                      builtUpArea,
+                      'Usable area + internal wall area',
+                    ),
+                    _summaryMetric(
+                      'External Wall / Other Area',
+                      externalWallArea,
+                      externalWall.sourceLabel,
+                    ),
+                    _summaryMetric(
+                      'Loading / Common Area',
+                      loadingArea,
+                      loading.sourceLabel,
+                    ),
+                    const Divider(height: 28),
+                    _summaryMetric(
+                      'Super Built-up / Saleable Area',
+                      superBuiltUpArea,
+                      'Built-up + external/other + loading',
+                      prominent: true,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: rooms.every((room) => room.hasMeasurements)
+                          ? saveCalculatorAudit
+                          : null,
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('Save Area Audit'),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Calculations reflect your measurements and assumptions. Review them against the property documents before relying on a report.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.secondaryText,
+                        height: 1.6,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+
+  Widget _summaryMetric(
+    String label,
+    double area,
+    String detail, {
+    bool prominent = false,
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 9),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: prominent ? AppColors.primary : AppColors.dark,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          StudioSettings.instance.area(area),
+          style: TextStyle(
+            fontSize: prominent ? 23 : 18,
+            fontWeight: FontWeight.w800,
+            color: prominent ? AppColors.primary : AppColors.dark,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          detail,
+          style: const TextStyle(fontSize: 10, color: AppColors.secondaryText),
+        ),
+      ],
+    ),
+  );
 }
 
 // ============================================================
 // CALCULATOR HEADER
 // ============================================================
 
+// Kept for the compact calculator route used by earlier navigation variants.
+// ignore: unused_element
 class _CalculatorHeader extends StatelessWidget {
   final double? usableArea;
   final AreaDisplayUnit? displayUnit;
 
+  // ignore: unused_element_parameter
   const _CalculatorHeader({required this.usableArea, this.displayUnit});
 
   @override
@@ -2106,6 +2341,17 @@ double _dynamicDouble(dynamic value) {
   return 0.0;
 }
 
+String _savedAreaSource(
+  Map<dynamic, dynamic> data,
+  String key,
+  String fallback,
+) {
+  if (data['${key}Mode'] == AreaValueMode.fixed.name) {
+    return 'Fixed builder value (${AreaDisplayUnit.imperial.formatArea(_dynamicDouble(data['${key}FixedSquareFeet']))})';
+  }
+  return fallback;
+}
+
 // ============================================================
 // OCR SCANNER
 // ============================================================
@@ -2132,9 +2378,9 @@ class _VerificationDraft {
   final Set<String> dismissedOcrPairIds = {};
   List<RoomData> rooms = [];
   bool isProcessing = false;
-  double internalWallPercent = 12;
-  double externalWallPercent = 0;
-  double loadingPercent = 30;
+  final internalWall = AreaAdjustment(percent: 12);
+  final externalWall = AreaAdjustment(percent: 0);
+  final loading = AreaAdjustment(percent: 30);
 }
 
 class _OcrScannerScreenState extends State<OcrScannerScreen> {
@@ -2148,6 +2394,18 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   bool get _unitChosenByUser => _draft.unitChosenByUser;
   set _unitChosenByUser(bool value) => _draft.unitChosenByUser = value;
   Set<AreaDisplayUnit> get _detectedUnits => _draft.detectedUnits;
+
+  void _studioUnitsChanged() {
+    final unit = StudioSettings.instance.metric
+        ? AreaDisplayUnit.metric
+        : AreaDisplayUnit.imperial;
+    setState(() {
+      for (final draft in [_manualDraft, _photoDraft]) {
+        draft.displayUnit = unit;
+        draft.unitChosenByUser = true;
+      }
+    });
+  }
 
   void selectDisplayUnit(AreaDisplayUnit unit) {
     setState(() {
@@ -2178,6 +2436,12 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   void initState() {
     super.initState();
     selectedMode = widget.initialMode ?? VerifyInputMode.photo;
+    final preferredUnit = StudioSettings.instance.metric
+        ? AreaDisplayUnit.metric
+        : AreaDisplayUnit.imperial;
+    _manualDraft.displayUnit = preferredUnit;
+    _photoDraft.displayUnit = preferredUnit;
+    StudioSettings.instance.addListener(_studioUnitsChanged);
     if (selectedMode == VerifyInputMode.manual) {
       scanRooms.add(RoomData(name: 'Living Room'));
     }
@@ -2185,12 +2449,12 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
 
   bool get isProcessing => _draft.isProcessing;
   set isProcessing(bool value) => _draft.isProcessing = value;
-  double get internalWallPercent => _draft.internalWallPercent;
-  set internalWallPercent(double value) => _draft.internalWallPercent = value;
-  double get externalWallPercent => _draft.externalWallPercent;
-  set externalWallPercent(double value) => _draft.externalWallPercent = value;
-  double get loadingPercent => _draft.loadingPercent;
-  set loadingPercent(double value) => _draft.loadingPercent = value;
+  double get internalWallPercent => _draft.internalWall.percent;
+  set internalWallPercent(double value) => _draft.internalWall.percent = value;
+  double get externalWallPercent => _draft.externalWall.percent;
+  set externalWallPercent(double value) => _draft.externalWall.percent = value;
+  double get loadingPercent => _draft.loading.percent;
+  set loadingPercent(double value) => _draft.loading.percent = value;
 
   double get usableArea {
     double totalSquareMeters = 0.0;
@@ -2202,16 +2466,17 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
     return DimensionParser.squareMetersToSquareFeet(totalSquareMeters);
   }
 
-  double get internalWallArea => usableArea * internalWallPercent / 100.0;
+  double get internalWallArea => _draft.internalWall.areaFor(usableArea);
   bool get hasCalculatedRooms =>
       scanRooms.any((room) => room.contributesToTotal);
   double get builtUpArea => usableArea + internalWallArea;
-  double get externalWallArea => usableArea * externalWallPercent / 100.0;
-  double get loadingArea => builtUpArea * loadingPercent / 100.0;
+  double get externalWallArea => _draft.externalWall.areaFor(usableArea);
+  double get loadingArea => _draft.loading.areaFor(builtUpArea);
   double get superBuiltUpArea => builtUpArea + externalWallArea + loadingArea;
 
   @override
   void dispose() {
+    StudioSettings.instance.removeListener(_studioUnitsChanged);
     textRecognizer.close();
     super.dispose();
   }
@@ -2788,6 +3053,18 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
   }
 
   Future<void> saveScanAudit() async {
+    if (![
+      _draft.internalWall,
+      _draft.externalWall,
+      _draft.loading,
+    ].every((value) => value.isValid)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Correct the wall and loading values before saving.'),
+        ),
+      );
+      return;
+    }
     if (selectedImages.isEmpty &&
         extractedText.trim().isEmpty &&
         parsedDimensions.isEmpty &&
@@ -2879,11 +3156,14 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
       'usableArea': usableArea,
       'carpetArea': usableArea,
       'internalWallPercent': internalWallPercent,
+      ..._draft.internalWall.serialize('internalWall'),
       'internalWallArea': internalWallArea,
       'builtUpArea': builtUpArea,
       'externalWallPercent': externalWallPercent,
+      ..._draft.externalWall.serialize('externalWall'),
       'externalWallArea': externalWallArea,
       'loadingPercent': loadingPercent,
+      ..._draft.loading.serialize('loading'),
       'loadingArea': loadingArea,
       'superBuiltUpArea': superBuiltUpArea,
     });
@@ -2903,9 +3183,9 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
         scanRooms.add(RoomData(name: 'Living Room'));
       }
       isProcessing = false;
-      internalWallPercent = 12.0;
-      externalWallPercent = 0.0;
-      loadingPercent = 30.0;
+      _draft.internalWall.reset(12);
+      _draft.externalWall.reset(0);
+      _draft.loading.reset(30);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -3042,383 +3322,455 @@ class _OcrScannerScreenState extends State<OcrScannerScreen> {
             ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _DraftHeader(),
-              const SizedBox(height: 12),
-              const Text(
-                'Verify your area',
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.dark,
-                ),
+              if (!StudioShellScope.contains(context)) ...[
+                const _DraftHeader(),
+                const SizedBox(height: 24),
+              ],
+              const StudioHeading(
+                title: 'Floor Plan Blueprint Scanner',
+                subtitle:
+                    'Upload or photograph builder floor plans, review detected room dimensions, and generate an area audit report.',
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<VerifyInputMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: VerifyInputMode.photo,
-                      label: Text('Scan Floor Plan'),
-                    ),
-                    ButtonSegment(
-                      value: VerifyInputMode.manual,
-                      label: Text('Enter Manually'),
-                    ),
-                  ],
-                  emptySelectionAllowed: true,
-                  showSelectedIcon: false,
-                  selected: {if (selectedMode != null) selectedMode!},
-                  onSelectionChanged: (modes) {
-                    if (modes.isNotEmpty) _selectInputMode(modes.first);
-                  },
-                ),
-              ),
-              _VerificationProgress(
-                manual: selectedMode == VerifyInputMode.manual,
-                current:
-                    selectedMode == null ||
-                        (selectedMode == VerifyInputMode.photo &&
-                            selectedImages.isEmpty)
-                    ? 0
-                    : scanRooms.isNotEmpty &&
-                          scanRooms.every((room) => room.contributesToTotal)
-                    ? 2
-                    : 1,
-              ),
-              if (selectedMode == VerifyInputMode.photo &&
-                  selectedImages.isEmpty) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(
-                        Icons.document_scanner_outlined,
-                        size: 44,
-                        color: AppColors.primary,
+              StudioColumns(
+                main: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<VerifyInputMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: VerifyInputMode.photo,
+                            label: Text('Scan Floor Plan'),
+                          ),
+                          ButtonSegment(
+                            value: VerifyInputMode.manual,
+                            label: Text('Enter Manually'),
+                          ),
+                        ],
+                        emptySelectionAllowed: true,
+                        showSelectedIcon: false,
+                        selected: {if (selectedMode != null) selectedMode!},
+                        onSelectionChanged: (modes) {
+                          if (modes.isNotEmpty) _selectInputMode(modes.first);
+                        },
                       ),
-                      SizedBox(height: 14),
-                      Text(
-                        'Add your floor plan',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                    ),
+                    _VerificationProgress(
+                      manual: selectedMode == VerifyInputMode.manual,
+                      current:
+                          selectedMode == null ||
+                              (selectedMode == VerifyInputMode.photo &&
+                                  selectedImages.isEmpty)
+                          ? 0
+                          : scanRooms.isNotEmpty &&
+                                scanRooms.every(
+                                  (room) => room.contributesToTotal,
+                                )
+                          ? 2
+                          : 1,
+                    ),
+                    if (selectedMode == VerifyInputMode.photo &&
+                        selectedImages.isEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(
+                              Icons.document_scanner_outlined,
+                              size: 44,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(height: 14),
+                            Text(
+                              'Add your floor plan',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Choose a clear photo with visible room dimensions.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.secondaryText),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Choose a clear photo with visible room dimensions.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.secondaryText),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ScanButton(
+                              icon: Icons.camera_alt_outlined,
+                              label: 'Camera',
+                              onTap: scanFromCamera,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _ScanButton(
+                              icon: Icons.photo_library_outlined,
+                              label: 'Gallery',
+                              onTap: scanFromGallery,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ScanButton(
-                        icon: Icons.camera_alt_outlined,
-                        label: 'Camera',
-                        onTap: scanFromCamera,
+                    if (selectedMode != null) ...[
+                      if (isProcessing) ...[
+                        const SizedBox(height: 16),
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 8),
+                        const Text('Reading room measurements…'),
+                      ],
+                      if (selectedImages.isNotEmpty) ...[
+                        _photoStrip(),
+                        const SizedBox(height: 18),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              selectedMode == VerifyInputMode.photo
+                                  ? 'Review rooms'
+                                  : 'Rooms / Spaces',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${scanRooms.where((room) => room.contributesToTotal).length} of ${scanRooms.length} ${selectedMode == VerifyInputMode.photo ? 'confirmed' : 'complete'}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              color: AppColors.dark,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ScanButton(
-                        icon: Icons.photo_library_outlined,
-                        label: 'Gallery',
-                        onTap: scanFromGallery,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (selectedMode != null) ...[
-                if (isProcessing) ...[
-                  const SizedBox(height: 16),
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: 8),
-                  const Text('Reading room measurements…'),
-                ],
-                if (selectedImages.isNotEmpty) ...[
-                  _photoStrip(),
-                  const SizedBox(height: 18),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        selectedMode == VerifyInputMode.photo
-                            ? 'Review rooms'
-                            : 'Rooms / Spaces',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.dark,
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          minHeight: 7,
+                          color: const Color(0xFF16805D),
+                          backgroundColor: const Color(0xFFDCE2EB),
+                          value: scanRooms.isEmpty
+                              ? 0
+                              : scanRooms
+                                        .where(
+                                          (room) => room.contributesToTotal,
+                                        )
+                                        .length /
+                                    scanRooms.length,
                         ),
                       ),
-                    ),
-                    Text(
-                      '${scanRooms.where((room) => room.contributesToTotal).length} of ${scanRooms.length} ${selectedMode == VerifyInputMode.photo ? 'confirmed' : 'complete'}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: AppColors.dark,
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Tap a room to edit its measurements.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          AreaUnitControl(
+                            value: displayUnit,
+                            onChanged: selectDisplayUnit,
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    minHeight: 7,
-                    color: const Color(0xFF16805D),
-                    backgroundColor: const Color(0xFFDCE2EB),
-                    value: scanRooms.isEmpty
-                        ? 0
-                        : scanRooms
-                                  .where((room) => room.contributesToTotal)
-                                  .length /
-                              scanRooms.length,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Tap a room to edit its measurements.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.secondaryText,
+                      const SizedBox(height: 10),
+                      ...List.generate(scanRooms.length, (index) {
+                        final room = scanRooms[index];
+                        if (room.sourcePhotoId != null) {
+                          return ScanRoomDetailsCard(
+                            room: room,
+                            displayUnit: displayUnit,
+                            onEdit: () => _editScannedRoom(room),
+                            onConfirm: () => _confirmRoom(room),
+                            onDelete: () => _removeRoom(index),
+                          );
+                        }
+                        return RoomCard(
+                          key: ValueKey(room),
+                          room: room,
+                          displayUnit: displayUnit,
+                          roomNumber: index + 1,
+                          onDelete: () => _removeRoom(index),
+                          requiresConfirmation: room.isAutoExtracted,
+                          isConfirmed: room.isUserVerified,
+                          onConfirm: () => _confirmRoom(room),
+                          onChanged: () => setState(() {
+                            if (room.sourcePairId != null) {
+                              room.isUserVerified = true;
+                            }
+                          }),
+                        );
+                      }),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _addManualRoom,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add room'),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    AreaUnitControl(
-                      value: displayUnit,
-                      onChanged: selectDisplayUnit,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ...List.generate(scanRooms.length, (index) {
-                  final room = scanRooms[index];
-                  if (room.sourcePhotoId != null) {
-                    return ScanRoomDetailsCard(
-                      room: room,
-                      displayUnit: displayUnit,
-                      onEdit: () => _editScannedRoom(room),
-                      onConfirm: () => _confirmRoom(room),
-                      onDelete: () => _removeRoom(index),
-                    );
-                  }
-                  return RoomCard(
-                    key: ValueKey(room),
-                    room: room,
-                    displayUnit: displayUnit,
-                    roomNumber: index + 1,
-                    onDelete: () => _removeRoom(index),
-                    requiresConfirmation: room.isAutoExtracted,
-                    isConfirmed: room.isUserVerified,
-                    onConfirm: () => _confirmRoom(room),
-                    onChanged: () => setState(() {
-                      if (room.sourcePairId != null) room.isUserVerified = true;
-                    }),
-                  );
-                }),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _addManualRoom,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add room'),
-                  ),
-                ),
-                if (scanRooms.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'No rooms yet. Add a photo or enter measurements to begin.',
-                      style: TextStyle(color: AppColors.secondaryText),
-                    ),
-                  ),
-                const SizedBox(height: 14),
-
-                const _SectionTitle(
-                  title: 'Wall assumptions',
-                  subtitle:
-                      'Adjust these values according to your property or drawing.',
-                ),
-                const SizedBox(height: 12),
-                _PercentageInput(
-                  label: 'Internal wall',
-                  value: internalWallPercent,
-                  onChanged: (value) =>
-                      setState(() => internalWallPercent = value),
-                ),
-                const SizedBox(height: 10),
-                _PercentageInput(
-                  label: 'External wall / other',
-                  value: externalWallPercent,
-                  onChanged: (value) =>
-                      setState(() => externalWallPercent = value),
-                ),
-                const SizedBox(height: 10),
-                _PercentageInput(
-                  label: 'Loading / common area',
-                  value: loadingPercent,
-                  onChanged: (value) => setState(() => loadingPercent = value),
-                ),
-                const SizedBox(height: 20),
-                _SectionTitle(
-                  key: _resultsKey,
-                  title: 'Area calculation',
-                  subtitle:
-                      'External wall is kept separate from built-up area.',
-                ),
-                const SizedBox(height: 12),
-                _ResultCard(
-                  displayUnit: displayUnit,
-                  title: 'Calculated Carpet Area',
-                  value: hasCalculatedRooms ? usableArea : null,
-                  icon: Icons.square_foot,
-                  subtitle: 'Confirmed scans and completed manual rooms',
-                ),
-                _ResultCard(
-                  displayUnit: displayUnit,
-                  title: 'Internal Wall Area',
-                  value: hasCalculatedRooms ? internalWallArea : null,
-                  icon: Icons.home_work_outlined,
-                  subtitle:
-                      '${internalWallPercent.toStringAsFixed(1)}% assumption',
-                ),
-                _ResultCard(
-                  displayUnit: displayUnit,
-                  title: 'Built-up Area',
-                  value: hasCalculatedRooms ? builtUpArea : null,
-                  icon: Icons.home_outlined,
-                  subtitle: 'Carpet area + internal wall area',
-                  highlighted: true,
-                ),
-                _ResultCard(
-                  displayUnit: displayUnit,
-                  title: 'External Wall / Other Area',
-                  value: hasCalculatedRooms ? externalWallArea : null,
-                  icon: Icons.domain,
-                  subtitle:
-                      '${externalWallPercent.toStringAsFixed(1)}% shown separately',
-                ),
-                _ResultCard(
-                  displayUnit: displayUnit,
-                  title: 'Loading / Common Area',
-                  value: hasCalculatedRooms ? loadingArea : null,
-                  icon: Icons.add_chart,
-                  subtitle:
-                      '${loadingPercent.toStringAsFixed(1)}% of built-up area',
-                ),
-                _ResultCard(
-                  displayUnit: displayUnit,
-                  title: 'Super Built-up / Saleable Area',
-                  value: hasCalculatedRooms ? superBuiltUpArea : null,
-                  icon: Icons.apartment,
-                  subtitle: 'Built-up + external/other + loading',
-                  highlighted: true,
-                ),
-                const SizedBox(height: 16),
-                if (selectedMode == VerifyInputMode.photo ||
-                    scanPhotos.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(17),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFF4D47A)),
-                    ),
-                    child: const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.info_outline, color: AppColors.orange),
-                        SizedBox(width: 12),
-                        Expanded(
+                      if (scanRooms.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
                           child: Text(
-                            'OCR can be affected by photo angle, blur, shadows and drawing quality. Verify every extracted room and manually correct or add missing values before saving. Area calculations use the same method as the main Area Calculator.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              height: 1.45,
-                              color: Color(0xFF6B5A20),
+                            'No rooms yet. Add a photo or enter measurements to begin.',
+                            style: TextStyle(color: AppColors.secondaryText),
+                          ),
+                        ),
+                      const SizedBox(height: 14),
+
+                      const _SectionTitle(
+                        title: 'Wall assumptions',
+                        subtitle:
+                            'Adjust these values according to your property or drawing.',
+                      ),
+                      const SizedBox(height: 12),
+                      AreaAdjustmentInput(
+                        label: 'Internal wall',
+                        adjustment: _draft.internalWall,
+                        helper:
+                            'Added to carpet area to calculate built-up area.',
+                        onChanged: () => setState(() {}),
+                      ),
+                      const SizedBox(height: 10),
+                      AreaAdjustmentInput(
+                        label: 'External wall / other',
+                        adjustment: _draft.externalWall,
+                        helper: 'Added separately to super built-up area.',
+                        onChanged: () => setState(() {}),
+                      ),
+                      const SizedBox(height: 10),
+                      AreaAdjustmentInput(
+                        label: 'Loading / common area',
+                        adjustment: _draft.loading,
+                        helper:
+                            'Added to built-up area as shared/common-area loading.',
+                        onChanged: () => setState(() {}),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ],
+                ),
+                aside: StudioPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (selectedMode != null) ...[
+                        _SectionTitle(
+                          key: _resultsKey,
+                          title: 'Area Audit Summary',
+                          subtitle:
+                              'External wall is kept separate from built-up area.',
+                        ),
+                        const SizedBox(height: 12),
+                        _ResultCard(
+                          displayUnit:
+                              StudioSettings.instance.unit ==
+                                  StudioAreaUnit.dual
+                              ? null
+                              : displayUnit,
+                          title: 'Calculated Carpet Area',
+                          value: hasCalculatedRooms ? usableArea : null,
+                          icon: Icons.square_foot,
+                          subtitle:
+                              'Confirmed scans and completed manual rooms',
+                        ),
+                        _ResultCard(
+                          displayUnit:
+                              StudioSettings.instance.unit ==
+                                  StudioAreaUnit.dual
+                              ? null
+                              : displayUnit,
+                          title: 'Internal Wall Area',
+                          value: hasCalculatedRooms ? internalWallArea : null,
+                          icon: Icons.home_work_outlined,
+                          subtitle: _draft.internalWall.sourceLabel,
+                        ),
+                        _ResultCard(
+                          displayUnit:
+                              StudioSettings.instance.unit ==
+                                  StudioAreaUnit.dual
+                              ? null
+                              : displayUnit,
+                          title: 'Built-up Area',
+                          value: hasCalculatedRooms ? builtUpArea : null,
+                          icon: Icons.home_outlined,
+                          subtitle: 'Carpet area + internal wall area',
+                          highlighted: true,
+                        ),
+                        _ResultCard(
+                          displayUnit:
+                              StudioSettings.instance.unit ==
+                                  StudioAreaUnit.dual
+                              ? null
+                              : displayUnit,
+                          title: 'External Wall / Other Area',
+                          value: hasCalculatedRooms ? externalWallArea : null,
+                          icon: Icons.domain,
+                          subtitle: _draft.externalWall.sourceLabel,
+                        ),
+                        _ResultCard(
+                          displayUnit:
+                              StudioSettings.instance.unit ==
+                                  StudioAreaUnit.dual
+                              ? null
+                              : displayUnit,
+                          title: 'Loading / Common Area',
+                          value: hasCalculatedRooms ? loadingArea : null,
+                          icon: Icons.add_chart,
+                          subtitle: _draft.loading.sourceLabel,
+                        ),
+                        _ResultCard(
+                          displayUnit:
+                              StudioSettings.instance.unit ==
+                                  StudioAreaUnit.dual
+                              ? null
+                              : displayUnit,
+                          title: 'Super Built-up / Saleable Area',
+                          value: hasCalculatedRooms ? superBuiltUpArea : null,
+                          icon: Icons.apartment,
+                          subtitle: 'Built-up + external/other + loading',
+                          highlighted: true,
+                        ),
+                        const SizedBox(height: 16),
+                        if (selectedMode == VerifyInputMode.photo ||
+                            scanPhotos.isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(17),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFF4D47A),
+                              ),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: AppColors.orange,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'OCR can be affected by photo angle, blur, shadows and drawing quality. Verify every extracted room and manually correct or add missing values before saving. Area calculations use the same method as the main Area Calculator.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      height: 1.45,
+                                      color: Color(0xFF6B5A20),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (extractedText.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          ExpansionTile(
+                            tilePadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Extracted OCR text',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            subtitle: const Text(
+                              'Tap to inspect raw text from all photos',
+                            ),
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: SelectableText(
+                                  extractedText,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: saveScanAudit,
+                            icon: const Icon(Icons.save_outlined),
+                            label: const Text(
+                              'Save Area Audit',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
                             ),
                           ),
                         ),
+                      ] else ...[
+                        const Icon(
+                          Icons.analytics_outlined,
+                          size: 32,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Area Audit Summary',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Choose a floor plan or enter room measurements to begin.',
+                          style: TextStyle(color: AppColors.secondaryText),
+                        ),
                       ],
-                    ),
-                  ),
-                if (extractedText.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Extracted OCR text',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    subtitle: const Text(
-                      'Tap to inspect raw text from all photos',
-                    ),
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: SelectableText(
-                          extractedText,
-                          style: const TextStyle(fontSize: 13, height: 1.5),
-                        ),
-                      ),
                     ],
                   ),
-                ],
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: saveScanAudit,
-                    icon: const Icon(Icons.save_outlined),
-                    label: const Text(
-                      'Save Area Audit',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -3678,303 +4030,343 @@ class _SavedAuditsScreenState extends State<SavedAuditsScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          SessionController.instance.isGuest
-              ? 'Session Reports'
-              : 'Saved Audits',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          if (SessionController.instance.isGuest)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: GuestReportNotice(),
-            ),
-          Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: box.listenable(),
-              builder: (context, Box box, _) {
-                if (box.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(30),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 76,
-                            height: 76,
-                            decoration: BoxDecoration(
-                              color: AppColors.lightBlue,
-                              borderRadius: BorderRadius.circular(22),
-                            ),
-                            child: const Icon(
-                              Icons.folder_open,
-                              color: AppColors.primary,
-                              size: 38,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'No saved audits yet',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.dark,
-                            ),
-                          ),
-                          const SizedBox(height: 7),
-                          const Text(
-                            'Your manual calculations and floor-plan scans will appear here.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.secondaryText,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+  String _query = '';
+  String _typeFilter = 'all';
+  final Set<dynamic> _compareKeys = {};
+
+  void _compareAudits() {
+    final records = _compareKeys
+        .where(box.containsKey)
+        .map(box.get)
+        .whereType<Map>()
+        .toList();
+    if (records.length != 2) return;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Compare Audits'),
+        content: SizedBox(
+          width: 720,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final record in records) ...[
+                  Text(
+                    record['auditName']?.toString() ?? 'Property audit',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 10),
+                  for (final metric in {
+                    'carpetArea': 'Carpet area',
+                    'builtUpArea': 'Built-up area',
+                    'superBuiltUpArea': 'Super built-up area',
+                  }.entries)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Text(
+                        '${metric.value}: ${StudioSettings.instance.area(_dynamicDouble(record[metric.key]))}',
                       ),
                     ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(18),
-                  itemCount: box.length,
-                  itemBuilder: (context, index) {
-                    final dynamic data = box.getAt(index);
-
-                    final String type = data['type']?.toString() ?? 'scan';
-
-                    final bool isCalculator = type == 'calculator';
-
-                    final String auditName =
-                        data['auditName']?.toString() ?? 'Saved Property Audit';
-
-                    final String builder = data['builder']?.toString() ?? '';
-
-                    final String project = data['project']?.toString() ?? '';
-
-                    final String flat = data['flat']?.toString() ?? '';
-
-                    final String timestamp =
-                        data['timestamp']?.toString() ?? '';
-
-                    DateTime? date;
-
-                    try {
-                      date = DateTime.parse(timestamp);
-                    } catch (_) {}
-
-                    String areaText = '';
-
-                    if (isCalculator) {
-                      final double carpet = _dynamicDouble(data['carpetArea']);
-
-                      final double superBuilt = _dynamicDouble(
-                        data['superBuiltUpArea'],
-                      );
-
-                      areaText =
-                          '${DimensionParser.format(carpet)} sq ft carpet • '
-                          '${DimensionParser.format(superBuilt)} sq ft SBA';
-                    } else {
-                      final dynamic dimensions = data['parsedDimensions'];
-
-                      final int count = dimensions is Map
-                          ? dimensions.length
-                          : 0;
-
-                      areaText = '$count detected dimensions';
-                    }
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: [
-                          InkWell(
-                            onTap: () => openReport(data),
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: isCalculator
-                                          ? const Color(0xFFEAF0FF)
-                                          : const Color(0xFFEFFAF3),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Icon(
-                                      isCalculator
-                                          ? Icons.calculate_outlined
-                                          : Icons.document_scanner_outlined,
-                                      color: isCalculator
-                                          ? AppColors.primary
-                                          : AppColors.green,
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 13),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          auditName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.dark,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          isCalculator
-                                              ? 'MANUAL CALCULATION'
-                                              : 'FLOOR PLAN SCAN',
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: isCalculator
-                                                ? AppColors.primary
-                                                : AppColors.green,
-                                          ),
-                                        ),
-                                        if (builder.isNotEmpty ||
-                                            project.isNotEmpty)
-                                          const SizedBox(height: 5),
-                                        if (builder.isNotEmpty ||
-                                            project.isNotEmpty)
-                                          Text(
-                                            [
-                                              if (builder.isNotEmpty) builder,
-                                              if (project.isNotEmpty) project,
-                                            ].join(' • '),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.secondaryText,
-                                            ),
-                                          ),
-                                        if (flat.isNotEmpty)
-                                          Text(
-                                            'Flat $flat',
-                                            style: const TextStyle(
-                                              fontSize: 11.5,
-                                              color: AppColors.secondaryText,
-                                            ),
-                                          ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          areaText,
-                                          style: const TextStyle(
-                                            fontSize: 11.5,
-                                            color: AppColors.secondaryText,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          date != null
-                                              ? '${date.day}/${date.month}/${date.year}'
-                                              : 'Saved audit',
-                                          style: const TextStyle(
-                                            fontSize: 10.5,
-                                            color: AppColors.secondaryText,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    color: AppColors.secondaryText,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          Container(height: 1, color: AppColors.border),
-
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextButton.icon(
-                                    onPressed: () => openReport(data),
-                                    icon: const Icon(
-                                      Icons.open_in_new,
-                                      size: 18,
-                                    ),
-                                    label: const Text('Open Report'),
-                                  ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: AppColors.border,
-                                ),
-                                Expanded(
-                                  child: TextButton.icon(
-                                    onPressed: () => previewAuditPdf(data),
-                                    icon: const Icon(
-                                      Icons.picture_as_pdf_outlined,
-                                      size: 18,
-                                    ),
-                                    label: const Text('View PDF'),
-                                  ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 28,
-                                  color: AppColors.border,
-                                ),
-                                IconButton(
-                                  tooltip: 'Delete',
-                                  onPressed: () => deleteAudit(index),
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: AppColors.red,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+                  const Divider(height: 28),
+                ],
+                const Text(
+                  'Compare measurements and assumptions from the same area definition.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: StudioSettings.instance,
+    builder: (context, _) => Scaffold(
+      appBar: StudioShellScope.contains(context)
+          ? null
+          : AppBar(title: const Text('Saved Audits')),
+      body: ValueListenableBuilder<Box>(
+        valueListenable: box.listenable(),
+        builder: (context, box, _) {
+          final keys = box.keys.where((key) => box.get(key) is Map).toList()
+            ..sort(
+              (a, b) => (box.get(b)['timestamp']?.toString() ?? '').compareTo(
+                box.get(a)['timestamp']?.toString() ?? '',
+              ),
+            );
+          final scans = keys
+              .where((key) => box.get(key)['type'] != 'calculator')
+              .length;
+          final filtered = keys.where((key) {
+            final record = box.get(key) as Map;
+            final type = record['type']?.toString() ?? 'scan';
+            return (_typeFilter == 'all' || type == _typeFilter) &&
+                ['auditName', 'builder', 'project', 'flat']
+                    .map((field) => record[field]?.toString() ?? '')
+                    .join(' ')
+                    .toLowerCase()
+                    .contains(_query.toLowerCase());
+          }).toList();
+          final comparisonCount = _compareKeys.where(box.containsKey).length;
+          return ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              StudioHeading(
+                title: 'Saved Property Audits',
+                subtitle:
+                    'Browse, inspect, compare, and generate PDF reports for your property audits.',
+                actions: OutlinedButton.icon(
+                  onPressed: comparisonCount == 2 ? _compareAudits : null,
+                  icon: const Icon(Icons.compare_arrows),
+                  label: Text('Compare Audits ($comparisonCount/2)'),
+                ),
+              ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final stats = [
+                    StudioStat(
+                      icon: Icons.folder_outlined,
+                      value: '${keys.length}',
+                      label: 'Total Audits',
+                    ),
+                    StudioStat(
+                      icon: Icons.document_scanner_outlined,
+                      value: '$scans',
+                      label: 'Blueprint Scans',
+                      color: AppColors.green,
+                    ),
+                    StudioStat(
+                      icon: Icons.calculate_outlined,
+                      value: '${keys.length - scans}',
+                      label: 'Manual Calculations',
+                      color: AppColors.orange,
+                    ),
+                  ];
+                  return constraints.maxWidth < 650
+                      ? Column(
+                          children: [
+                            for (final stat in stats)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: stat,
+                              ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            for (var i = 0; i < stats.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 16),
+                              Expanded(child: stats[i]),
+                            ],
+                          ],
+                        );
+                },
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                key: const ValueKey('audit-search'),
+                decoration: const InputDecoration(
+                  hintText: 'Search by project, builder, flat...',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final filter in {
+                    'all': 'All Audits',
+                    'scan': 'Blueprint Scans',
+                    'calculator': 'Manual Calculations',
+                  }.entries)
+                    ChoiceChip(
+                      label: Text(filter.value),
+                      selected: _typeFilter == filter.key,
+                      onSelected: (_) =>
+                          setState(() => _typeFilter = filter.key),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (SessionController.instance.isGuest) ...[
+                const GuestReportNotice(),
+                const SizedBox(height: 16),
+              ],
+              if (filtered.isEmpty)
+                const StudioPanel(
+                  padding: EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.folder_open,
+                        color: AppColors.primary,
+                        size: 42,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No Audits Found',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Save an audit or try a different search or filter.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+              for (final key in filtered) ...[
+                _auditCard(key, box.get(key) as Map),
+                const SizedBox(height: 16),
+              ],
+            ],
+          );
+        },
+      ),
+    ),
+  );
+
+  Widget _auditCard(dynamic key, Map record) {
+    final manual = record['type'] == 'calculator';
+    final color = manual ? AppColors.primary : AppColors.green;
+    final project = [record['project'], record['builder'], record['flat']]
+        .where((value) => value != null && value.toString().isNotEmpty)
+        .join(' · ');
+    final date = DateTime.tryParse(record['timestamp']?.toString() ?? '');
+    return StudioPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  manual
+                      ? Icons.calculate_outlined
+                      : Icons.document_scanner_outlined,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record['auditName']?.toString() ?? 'Property audit',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      manual ? 'MANUAL CALCULATION' : 'BLUEPRINT SCAN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
+                    ),
+                    if (project.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        project,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Checkbox(
+                value: _compareKeys.contains(key),
+                onChanged: (value) => setState(() {
+                  if (value == true) {
+                    if (_compareKeys.where(box.containsKey).length < 2) {
+                      _compareKeys.add(key);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Select two audits at a time to compare.',
+                          ),
+                        ),
+                      );
+                    }
+                  } else {
+                    _compareKeys.remove(key);
+                  }
+                }),
+                semanticLabel: 'Compare ${record['auditName']}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            StudioSettings.instance.area(_dynamicDouble(record['carpetArea'])),
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            'Carpet area${date == null ? '' : ' · ${date.day}/${date.month}/${date.year}'}',
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.secondaryText,
+            ),
+          ),
+          const Divider(height: 28),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: () => openReport(record),
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('View Report'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => previewAuditPdf(record),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: const Text('View PDF'),
+              ),
+              TextButton.icon(
+                onPressed: () => deleteAudit(box.keys.toList().indexOf(key)),
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('Delete'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.red),
+              ),
+            ],
           ),
         ],
       ),
@@ -3982,8 +4374,6 @@ class _SavedAuditsScreenState extends State<SavedAuditsScreen> {
   }
 }
 
-// ============================================================
-// SAVED AUDIT REPORT
 // ============================================================
 
 class SavedAuditReportScreen extends StatefulWidget {
@@ -4337,8 +4727,11 @@ class _CalculatorReportOverview extends StatelessWidget {
           displayUnit: displayUnit,
           title: 'Internal Wall Area',
           value: value('internalWallArea'),
-          subtitle:
-              '${value('internalWallPercent').toStringAsFixed(1)}% assumption',
+          subtitle: _savedAreaSource(
+            data,
+            'internalWall',
+            '${value('internalWallPercent').toStringAsFixed(1)}% assumption',
+          ),
           icon: Icons.home_work_outlined,
         ),
 
@@ -4354,8 +4747,11 @@ class _CalculatorReportOverview extends StatelessWidget {
           displayUnit: displayUnit,
           title: 'External Wall / Other',
           value: value('externalWallArea'),
-          subtitle:
-              '${value('externalWallPercent').toStringAsFixed(1)}% assumption',
+          subtitle: _savedAreaSource(
+            data,
+            'externalWall',
+            '${value('externalWallPercent').toStringAsFixed(1)}% assumption',
+          ),
           icon: Icons.domain,
         ),
 
@@ -4363,8 +4759,11 @@ class _CalculatorReportOverview extends StatelessWidget {
           displayUnit: displayUnit,
           title: 'Loading / Common Area',
           value: value('loadingArea'),
-          subtitle:
-              '${value('loadingPercent').toStringAsFixed(1)}% of built-up',
+          subtitle: _savedAreaSource(
+            data,
+            'loading',
+            '${value('loadingPercent').toStringAsFixed(1)}% of built-up',
+          ),
           icon: Icons.add_chart,
         ),
 
@@ -4751,8 +5150,9 @@ class _DetailedAreaReportScreenState extends State<DetailedAreaReportScreen> {
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
                   columnSpacing: 24,
-                  dataRowMinHeight: 56,
-                  dataRowMaxHeight: 100,
+                  horizontalMargin: 12,
+                  dataRowMinHeight: 40,
+                  dataRowMaxHeight: 112,
                   columns: const [
                     DataColumn(label: Text('Room / Space')),
                     DataColumn(label: Text('Length'), numeric: true),
@@ -5145,11 +5545,18 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
         if (item is! Map) continue;
         Uint8List? bytes = _coerceImageBytes(item['imageBytes']);
         bytes ??= await _readImagePath(item['originalPath']);
-        if (bytes != null) {
-          evidence.add(
-            _PdfScanEvidence(bytes, item['ocrText']?.toString() ?? ''),
-          );
-        }
+        final dimensions = item['dimensions'] is List
+            ? (item['dimensions'] as List)
+                  .map((value) => value.toString())
+                  .toList()
+            : <String>[];
+        evidence.add(
+          _PdfScanEvidence(
+            bytes,
+            item['ocrText']?.toString() ?? '',
+            dimensions,
+          ),
+        );
       }
       if (evidence.isNotEmpty) return evidence;
     }
@@ -5209,40 +5616,11 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
       ),
     );
 
-    // Additional pages for floor plan photos (if scan)
+    // Structured scan evidence flows across pages in the same way in preview
+    // and exported output.
     final bool isScan = widget.data['type']?.toString() == 'scan';
     if (isScan) {
-      for (int i = 0; i < scanEvidence.length; i++) {
-        pages.add(
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'Scanned Floor Plan Photos - Photo ${i + 1}',
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blue900,
-                ),
-              ),
-              pw.SizedBox(height: 15),
-              pw.Container(
-                width: double.infinity,
-                height: 650,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.grey300),
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Image(
-                  pw.MemoryImage(scanEvidence[i].bytes),
-                  fit: pw.BoxFit.contain,
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-      pages.add(_buildPdfScanInformation(scanEvidence));
+      pages.addAll(_buildPdfScanInformation(scanEvidence));
     }
 
     return pages;
@@ -5539,67 +5917,127 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
     );
   }
 
-  pw.Widget _buildPdfScanInformation(List<_PdfScanEvidence> evidence) {
+  List<pw.Widget> _buildPdfScanInformation(List<_PdfScanEvidence> evidence) {
     final dynamic dimensionsValue = widget.data['parsedDimensions'];
     final int dimensionCount = dimensionsValue is Map
         ? dimensionsValue.length
         : 0;
-    final List<String> photoTexts = evidence
-        .map((item) => item.ocrText.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
     final String legacyText = widget.data['rawText']?.toString().trim() ?? '';
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          'OCR / Scan Information',
-          style: pw.TextStyle(
-            fontSize: 18,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue900,
-          ),
+    return <pw.Widget>[
+      pw.Text(
+        'OCR / Scan Information',
+        style: pw.TextStyle(
+          fontSize: 18,
+          fontWeight: pw.FontWeight.bold,
+          color: PdfColors.blue900,
         ),
-        pw.SizedBox(height: 10),
-        pw.Text(
-          '${evidence.length} readable floor-plan photo(s); '
-          '$dimensionCount extracted dimension value(s).',
-          style: const pw.TextStyle(fontSize: 10),
-        ),
-        pw.SizedBox(height: 12),
-        if (photoTexts.isNotEmpty)
-          ...List.generate(photoTexts.length, (index) {
-            return pw.Padding(
-              padding: const pw.EdgeInsets.only(bottom: 12),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
+      ),
+      pw.SizedBox(height: 10),
+      pw.Text(
+        '${evidence.length} readable floor-plan photo(s); '
+        '$dimensionCount extracted dimension value(s).',
+        style: const pw.TextStyle(fontSize: 10),
+      ),
+      pw.SizedBox(height: 12),
+      if (evidence.isNotEmpty)
+        ...List.generate(evidence.length, (index) {
+          final item = evidence[index];
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(bottom: 12),
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Photo ${index + 1}',
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 7),
+                if (item.bytes != null)
+                  pw.Container(
+                    height: 190,
+                    alignment: pw.Alignment.center,
+                    child: pw.Image(
+                      pw.MemoryImage(item.bytes!),
+                      fit: pw.BoxFit.contain,
+                    ),
+                  )
+                else
+                  pw.Container(
+                    height: 42,
+                    alignment: pw.Alignment.center,
+                    color: PdfColors.grey100,
+                    child: pw.Text(
+                      'Source image unavailable',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                  ),
+                if (item.dimensions.isNotEmpty) ...[
+                  pw.SizedBox(height: 8),
                   pw.Text(
-                    'Photo ${index + 1} OCR text',
+                    'Detected measurements',
                     style: pw.TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    photoTexts[index],
-                    style: const pw.TextStyle(fontSize: 9),
+                  pw.Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: item.dimensions
+                        .map(
+                          (value) => pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey300),
+                            ),
+                            child: pw.Text(
+                              value,
+                              style: const pw.TextStyle(fontSize: 8),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
-              ),
-            );
-          })
-        else
-          pw.Text(
-            legacyText.isEmpty ? 'No OCR text was retained.' : legacyText,
-            style: const pw.TextStyle(fontSize: 9),
-          ),
-        pw.SizedBox(height: 12),
-        _buildPdfVerificationDisclaimer(),
-      ],
-    );
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Extracted text',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 3),
+                pw.Text(
+                  item.ocrText.trim().isEmpty
+                      ? 'No OCR text was retained.'
+                      : item.ocrText,
+                  style: const pw.TextStyle(fontSize: 9),
+                ),
+              ],
+            ),
+          );
+        })
+      else
+        pw.Text(
+          legacyText.isEmpty ? 'No OCR text was retained.' : legacyText,
+          style: const pw.TextStyle(fontSize: 9),
+        ),
+      pw.SizedBox(height: 12),
+      _buildPdfVerificationDisclaimer(),
+    ];
   }
 
   pw.Widget _pdfTableCell(
@@ -5642,15 +6080,27 @@ class _AuditPdfPreviewScreenState extends State<AuditPdfPreviewScreen> {
           pw.SizedBox(height: 10),
           _pdfAssumptionRow(
             'Internal Wall',
-            '${_dynamicDouble(widget.data['internalWallPercent']).toStringAsFixed(1)}%',
+            _savedAreaSource(
+              widget.data as Map<dynamic, dynamic>,
+              'internalWall',
+              '${_dynamicDouble(widget.data['internalWallPercent']).toStringAsFixed(1)}%',
+            ),
           ),
           _pdfAssumptionRow(
             'External Wall / Other',
-            '${_dynamicDouble(widget.data['externalWallPercent']).toStringAsFixed(1)}%',
+            _savedAreaSource(
+              widget.data as Map<dynamic, dynamic>,
+              'externalWall',
+              '${_dynamicDouble(widget.data['externalWallPercent']).toStringAsFixed(1)}%',
+            ),
           ),
           _pdfAssumptionRow(
             'Loading / Common Area',
-            '${_dynamicDouble(widget.data['loadingPercent']).toStringAsFixed(1)}%',
+            _savedAreaSource(
+              widget.data as Map<dynamic, dynamic>,
+              'loading',
+              '${_dynamicDouble(widget.data['loadingPercent']).toStringAsFixed(1)}%',
+            ),
           ),
           pw.SizedBox(height: 15),
           pw.Text(

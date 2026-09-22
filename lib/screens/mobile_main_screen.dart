@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/rera_room_model.dart';
 import '../services/rera_calculator_service.dart';
 import '../data/bhk_presets.dart';
@@ -35,11 +35,11 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
   }
 
   ReraAuditCalculation get _audit => ReraAuditCalculation.compute(
-        rooms: _rooms,
-        internalWallPercent: _internalWallPercent,
-        externalWallPercent: _externalWallPercent,
-        loadingPercent: _loadingPercent,
-      );
+    rooms: _rooms,
+    internalWallPercent: _internalWallPercent,
+    externalWallPercent: _externalWallPercent,
+    loadingPercent: _loadingPercent,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +59,11 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                 color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.apartment_rounded, color: Color(0xFF2563EB), size: 18),
+              child: const Icon(
+                Icons.apartment_rounded,
+                color: Color(0xFF2563EB),
+                size: 18,
+              ),
             ),
             const SizedBox(width: 8),
             const Column(
@@ -116,7 +120,9 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      _displayUnit == ReraAreaDisplayUnit.sqFt ? 'sq ft' : 'sq m',
+                      _displayUnit == ReraAreaDisplayUnit.sqFt
+                          ? 'sq ft'
+                          : 'sq m',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -129,7 +135,11 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded, color: Color(0xFF64748B), size: 20),
+            icon: const Icon(
+              Icons.help_outline_rounded,
+              color: Color(0xFF64748B),
+              size: 20,
+            ),
             onPressed: () => ReraDefinitionsSheet.show(context),
             tooltip: 'RERA Rules',
           ),
@@ -213,7 +223,8 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
         ),
         ReraResultCard(
           title: 'Super Built-Up Area',
-          subtitle: 'Built-up + ${_loadingPercent.toStringAsFixed(0)}% Common Loading',
+          subtitle:
+              'Built-up + ${_loadingPercent.toStringAsFixed(0)}% Common Loading',
           valueSqFt: audit.superBuiltUpAreaSqFt,
           icon: Icons.layers_outlined,
           displayUnit: _displayUnit,
@@ -284,10 +295,7 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
           superBuiltUpSqFt: audit.superBuiltUpAreaSqFt,
         ),
         const SizedBox(height: 14),
-        AggregateCarpetBreakdownCard(
-          rooms: _rooms,
-          displayUnit: _displayUnit,
-        ),
+        AggregateCarpetBreakdownCard(rooms: _rooms, displayUnit: _displayUnit),
         const SizedBox(height: 14),
         WallThicknessSliderCard(
           internalWallPercent: _internalWallPercent,
@@ -340,7 +348,9 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
               selectedColor: const Color(0xFF2563EB),
               backgroundColor: Colors.white,
               side: BorderSide(
-                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                color: isSelected
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFFE2E8F0),
               ),
               onSelected: (selected) {
                 if (selected) {
@@ -370,7 +380,7 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withOpacity(0.25),
+            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -400,19 +410,26 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
                   'Sec 2(k) Standard',
-                  style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            ReraAuditCalculation.formatArea(audit.reraCarpetAreaSqFt, _displayUnit),
+            ReraAuditCalculation.formatArea(
+              audit.reraCarpetAreaSqFt,
+              _displayUnit,
+            ),
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -444,14 +461,24 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 9.5, color: Colors.white70),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 9.5, color: Colors.white70),
+          ),
         ),
         const SizedBox(height: 2),
-        Text(
-          ReraAuditCalculation.formatArea(sqFt, _displayUnit),
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            ReraAuditCalculation.formatArea(sqFt, _displayUnit),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
         ),
       ],
     );
@@ -467,13 +494,15 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
       initialSpaceType: RoomSpaceType.livingEnclosed,
       onSave: (name, length, width, spaceType) {
         setState(() {
-          _rooms.add(ReraRoomData(
-            id: 'room_${DateTime.now().millisecondsSinceEpoch}',
-            name: name,
-            length: length,
-            width: width,
-            spaceType: spaceType,
-          ));
+          _rooms.add(
+            ReraRoomData(
+              id: 'room_${DateTime.now().millisecondsSinceEpoch}',
+              name: name,
+              length: length,
+              width: width,
+              spaceType: spaceType,
+            ),
+          );
         });
       },
     );
@@ -506,7 +535,13 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
     required double initialLength,
     required double initialWidth,
     required RoomSpaceType initialSpaceType,
-    required Function(String name, double length, double width, RoomSpaceType spaceType) onSave,
+    required Function(
+      String name,
+      double length,
+      double width,
+      RoomSpaceType spaceType,
+    )
+    onSave,
   }) {
     final nameCtrl = TextEditingController(text: initialName);
     final lengthCtrl = TextEditingController(text: initialLength.toString());
@@ -537,7 +572,10 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20),
@@ -551,20 +589,34 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: ['Living', 'Master Bed', 'Bed 2', 'Kitchen', 'Utility', 'Balcony', 'Toilet'].map((p) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ActionChip(
-                        label: Text(p, style: const TextStyle(fontSize: 11)),
-                        onPressed: () {
-                          setModalState(() {
-                            nameCtrl.text = p;
-                            selectedType = ReraRoomData.inferRoomSpaceType(p);
-                          });
-                        },
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      [
+                        'Living',
+                        'Master Bed',
+                        'Bed 2',
+                        'Kitchen',
+                        'Utility',
+                        'Balcony',
+                        'Toilet',
+                      ].map((p) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            label: Text(
+                              p,
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            onPressed: () {
+                              setModalState(() {
+                                nameCtrl.text = p;
+                                selectedType = ReraRoomData.inferRoomSpaceType(
+                                  p,
+                                );
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -573,8 +625,13 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                 controller: nameCtrl,
                 decoration: InputDecoration(
                   labelText: 'Room / Space Name',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
                 onChanged: (val) {
                   setModalState(() {
@@ -589,11 +646,18 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                   Expanded(
                     child: TextField(
                       controller: lengthCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Length (ft)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -601,11 +665,18 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                   Expanded(
                     child: TextField(
                       controller: widthCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Width (ft)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -623,10 +694,30 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _spaceTypeChip('Living / Bed / Bath (In Carpet)', RoomSpaceType.livingEnclosed, selectedType, (t) => setModalState(() => selectedType = t)),
-                  _spaceTypeChip('Utility Inside Wall (In Carpet)', RoomSpaceType.utilityInside, selectedType, (t) => setModalState(() => selectedType = t)),
-                  _spaceTypeChip('Dry Balcony (Built-up Only)', RoomSpaceType.utilityOutside, selectedType, (t) => setModalState(() => selectedType = t)),
-                  _spaceTypeChip('Balcony / Terrace (Built-up)', RoomSpaceType.balcony, selectedType, (t) => setModalState(() => selectedType = t)),
+                  _spaceTypeChip(
+                    'Living / Bed / Bath (In Carpet)',
+                    RoomSpaceType.livingEnclosed,
+                    selectedType,
+                    (t) => setModalState(() => selectedType = t),
+                  ),
+                  _spaceTypeChip(
+                    'Utility Inside Wall (In Carpet)',
+                    RoomSpaceType.utilityInside,
+                    selectedType,
+                    (t) => setModalState(() => selectedType = t),
+                  ),
+                  _spaceTypeChip(
+                    'Dry Balcony (Built-up Only)',
+                    RoomSpaceType.utilityOutside,
+                    selectedType,
+                    (t) => setModalState(() => selectedType = t),
+                  ),
+                  _spaceTypeChip(
+                    'Balcony / Terrace (Built-up)',
+                    RoomSpaceType.balcony,
+                    selectedType,
+                    (t) => setModalState(() => selectedType = t),
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
@@ -638,15 +729,27 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () {
                     final l = double.tryParse(lengthCtrl.text) ?? 10.0;
                     final w = double.tryParse(widthCtrl.text) ?? 10.0;
-                    onSave(nameCtrl.text.trim().isEmpty ? 'Room' : nameCtrl.text.trim(), l, w, selectedType);
+                    onSave(
+                      nameCtrl.text.trim().isEmpty
+                          ? 'Room'
+                          : nameCtrl.text.trim(),
+                      l,
+                      w,
+                      selectedType,
+                    );
                     Navigator.pop(ctx);
                   },
-                  child: const Text('Save Space', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text(
+                    'Save Space',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ],
@@ -656,10 +759,22 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
     );
   }
 
-  Widget _spaceTypeChip(String label, RoomSpaceType type, RoomSpaceType selectedType, ValueChanged<RoomSpaceType> onSelected) {
+  Widget _spaceTypeChip(
+    String label,
+    RoomSpaceType type,
+    RoomSpaceType selectedType,
+    ValueChanged<RoomSpaceType> onSelected,
+  ) {
     final isSelected = type == selectedType;
     return ChoiceChip(
-      label: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : const Color(0xFF334155))),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: isSelected ? Colors.white : const Color(0xFF334155),
+        ),
+      ),
       selected: isSelected,
       selectedColor: const Color(0xFF2563EB),
       backgroundColor: const Color(0xFFF1F5F9),
@@ -668,4 +783,3 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
     );
   }
 }
-

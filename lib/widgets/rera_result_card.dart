@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/rera_room_model.dart';
 import '../services/rera_calculator_service.dart';
 
@@ -30,7 +30,8 @@ class ReraResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = accentColor ??
+    final effectiveColor =
+        accentColor ??
         (isHighlighted ? const Color(0xFF2563EB) : const Color(0xFF475569));
 
     return Container(
@@ -53,7 +54,7 @@ class ReraResultCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: effectiveColor.withOpacity(0.12),
+              color: effectiveColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: effectiveColor, size: 20),
@@ -79,9 +80,11 @@ class ReraResultCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1.5),
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
-                          color: effectiveColor.withOpacity(0.12),
+                          color: effectiveColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -121,4 +124,3 @@ class ReraResultCard extends StatelessWidget {
     );
   }
 }
-

@@ -1,4 +1,4 @@
-﻿import '../models/rera_room_model.dart';
+import '../models/rera_room_model.dart';
 
 class ReraAuditCalculation {
   final double internalLivingSqFt;
@@ -21,8 +21,9 @@ class ReraAuditCalculation {
   final double superBuiltUpAreaSqFt;
 
   /// Carpet-to-Super-Built-Up Efficiency Ratio (%)
-  double get efficiencyRatioPercent =>
-      superBuiltUpAreaSqFt > 0 ? (reraCarpetAreaSqFt / superBuiltUpAreaSqFt) * 100 : 0;
+  double get efficiencyRatioPercent => superBuiltUpAreaSqFt > 0
+      ? (reraCarpetAreaSqFt / superBuiltUpAreaSqFt) * 100
+      : 0;
 
   ReraAuditCalculation({
     required this.internalLivingSqFt,
@@ -109,4 +110,3 @@ class ReraAuditCalculation {
     return '${sqFt.toStringAsFixed(1)} sq ft';
   }
 }
-

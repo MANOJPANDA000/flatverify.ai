@@ -74,17 +74,104 @@ class ProfileSettings extends StatefulWidget {
 class _ProfileSettingsState extends State<ProfileSettings> {
   final name = TextEditingController();
   bool busy = false;
+  late String baselineName;
   final session = SessionController.instance;
+  String normalize(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  bool get valid =>
+      normalize(name.text).isNotEmpty && normalize(name.text).length <= 80;
+  bool get dirty => normalize(name.text) != baselineName;
+  bool get canSave => !busy && valid && dirty;
   @override
   void initState() {
     super.initState();
-    name.text = session.user?.displayName ?? '';
+    baselineName = normalize(session.user?.displayName ?? '');
+    name.text = baselineName;
+    name.addListener(_nameChanged);
+  }
+
+  void _nameChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    name.removeListener(_nameChanged);
     name.dispose();
     super.dispose();
+  }
+
+  Future<void> saveProfile() async {
+    if (!canSave) return;
+    final requested = normalize(name.text);
+    setState(() => busy = true);
+    try {
+      await session.updateName(requested);
+      if (!mounted) return;
+      final confirmed = normalize(session.user?.displayName ?? requested);
+      baselineName = confirmed;
+      name.value = TextEditingValue(
+        text: confirmed,
+        selection: TextSelection.collapsed(offset: confirmed.length),
+      );
+      showAuthFeedback(context, 'Profile updated.');
+    } catch (error) {
+      if (mounted) showAuthFeedback(context, authErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  void showPhotoActions() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(
+          children: [
+            const ListTile(
+              title: Text('Profile photo'),
+              subtitle: Text('Secure photo storage is not connected yet.'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showAuthFeedback(
+                  context,
+                  'Profile photo upload is not available yet.',
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take a photo'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showAuthFeedback(
+                  context,
+                  'Profile photo upload is not available yet.',
+                );
+              },
+            ),
+            if (session.user?.photoURL?.isNotEmpty == true)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Remove photo'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  run(session.removePhoto, 'Profile photo removed.');
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(sheetContext),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> run(Future<void> Function() action, String success) async {
@@ -112,9 +199,20 @@ class _ProfileSettingsState extends State<ProfileSettings> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          const OutlinedButton(
-            onPressed: null,
-            child: Text('Upload / change photo'),
+          Center(
+            child: Semantics(
+              button: true,
+              label: 'Manage profile photo',
+              child: Tooltip(
+                message: 'Manage profile photo',
+                child: IconButton.filledTonal(
+                  onPressed: busy ? null : showPhotoActions,
+                  iconSize: 30,
+                  padding: const EdgeInsets.all(16),
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                ),
+              ),
+            ),
           ),
           const Text(
             'Photo uploads are not available yet. Secure image storage must be connected.',
@@ -130,6 +228,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
           const SizedBox(height: 20),
           TextField(
             controller: name,
+            onChanged: (_) => setState(() {}),
             enabled: !busy,
             maxLength: 80,
             autofillHints: const [AutofillHints.name],
@@ -137,18 +236,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
             decoration: const InputDecoration(labelText: 'Full name'),
           ),
           FilledButton(
-            onPressed: busy
-                ? null
-                : () {
-                    if (name.text.trim().isEmpty) {
-                      showAuthFeedback(context, 'Enter your full name.');
-                      return;
-                    }
-                    run(
-                      () => session.updateName(name.text),
-                      'Profile updated.',
-                    );
-                  },
+            onPressed: canSave ? saveProfile : null,
             child: Text(busy ? 'Saving…' : 'Save profile'),
           ),
           if (busy)

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class WallThicknessSliderCard extends StatelessWidget {
   final double internalWallPercent;
@@ -28,7 +28,7 @@ class WallThicknessSliderCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -141,7 +141,10 @@ class WallThicknessSliderCard extends StatelessWidget {
                   ),
                   Text(
                     description,
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ],
               ),
@@ -176,4 +179,3 @@ class WallThicknessSliderCard extends StatelessWidget {
     );
   }
 }
-

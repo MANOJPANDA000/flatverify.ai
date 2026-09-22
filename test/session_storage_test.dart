@@ -17,7 +17,7 @@ void main() {
   });
 
   test(
-    'new app session clears guest reports but preserves account and legacy reports',
+    'new app session restores guest access and preserves all saved reports',
     () async {
       final first = SessionController();
       await first.initialize();
@@ -26,7 +26,7 @@ void main() {
       await account.add({'auditName': 'Permanent'});
       final legacy = await Hive.openBox('local_audits');
       await legacy.add({'auditName': 'Previous app'});
-      first.enterGuest();
+      await first.enterGuest();
       expect(
         first.reports.length,
         1,
@@ -34,7 +34,8 @@ void main() {
       await Hive.close();
       final second = SessionController();
       await second.initialize();
-      expect(second.reports, isEmpty);
+      expect(second.reports.length, 1);
+      expect(second.entered, isTrue);
       expect((await Hive.openBox('account_test_reports')).length, 1);
       expect((await Hive.openBox('local_audits')).length, 1);
     },

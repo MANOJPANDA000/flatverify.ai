@@ -1,4 +1,4 @@
-﻿/// RERA Space classification relative to the flat's outer perimeter walls
+/// RERA Space classification relative to the flat's outer perimeter walls
 enum RoomSpaceType {
   /// Enclosed interior living space (Living, Bed, Kitchen, Bath, Pooja, Study)
   livingEnclosed,
@@ -13,15 +13,9 @@ enum RoomSpaceType {
   balcony,
 }
 
-enum ReraDimensionUnit {
-  meters,
-  feet,
-}
+enum ReraDimensionUnit { meters, feet }
 
-enum ReraAreaDisplayUnit {
-  sqFt,
-  sqMeters,
-}
+enum ReraAreaDisplayUnit { sqFt, sqMeters }
 
 class ReraRoomData {
   final String id;
@@ -103,4 +97,3 @@ class ReraRoomData {
     return RoomSpaceType.livingEnclosed;
   }
 }
-

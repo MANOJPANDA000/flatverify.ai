@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/rera_room_model.dart';
 import '../services/rera_calculator_service.dart';
 
@@ -21,12 +21,14 @@ class ReraRoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lowerName = room.name.toLowerCase();
-    final isUtility = lowerName.contains('utility') ||
+    final isUtility =
+        lowerName.contains('utility') ||
         lowerName.contains('wash') ||
         lowerName.contains('dry') ||
         lowerName.contains('yard');
 
-    final isBalcony = !isUtility &&
+    final isBalcony =
+        !isUtility &&
         (lowerName.contains('balcony') ||
             lowerName.contains('balc') ||
             lowerName.contains('verandah') ||
@@ -42,7 +44,7 @@ class ReraRoomCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.015),
+            color: Colors.black.withValues(alpha: 0.015),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -81,7 +83,11 @@ class ReraRoomCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     child: const Padding(
                       padding: EdgeInsets.all(4.0),
-                      child: Icon(Icons.edit_outlined, size: 18, color: Color(0xFF64748B)),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -90,7 +96,11 @@ class ReraRoomCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     child: const Padding(
                       padding: EdgeInsets.all(4.0),
-                      child: Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: Color(0xFFEF4444),
+                      ),
                     ),
                   ),
                 ],
@@ -102,7 +112,7 @@ class ReraRoomCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${room.length} Ã— ${room.width} ${room.unit == ReraDimensionUnit.feet ? 'ft' : 'm'}',
+                '${room.length} × ${room.width} ${room.unit == ReraDimensionUnit.feet ? 'ft' : 'm'}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF64748B),
@@ -134,7 +144,7 @@ class ReraRoomCard extends StatelessWidget {
   Widget _buildClassificationBadge() {
     switch (room.spaceType) {
       case RoomSpaceType.utilityInside:
-        return _badge('In Carpet âœ“', const Color(0xFF059669));
+        return _badge('In Carpet ✓', const Color(0xFF059669));
       case RoomSpaceType.utilityOutside:
         return _badge('Built-up Only', Colors.amber.shade800);
       case RoomSpaceType.balcony:
@@ -148,7 +158,7 @@ class ReraRoomCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -191,13 +201,15 @@ class ReraRoomCard extends StatelessWidget {
                   _choiceButton(
                     label: 'Inside (Carpet)',
                     selected: isInside,
-                    onTap: () => onSpaceTypeChanged(RoomSpaceType.utilityInside),
+                    onTap: () =>
+                        onSpaceTypeChanged(RoomSpaceType.utilityInside),
                   ),
                   const SizedBox(width: 4),
                   _choiceButton(
                     label: 'Outside (Dry Balcony)',
                     selected: !isInside,
-                    onTap: () => onSpaceTypeChanged(RoomSpaceType.utilityOutside),
+                    onTap: () =>
+                        onSpaceTypeChanged(RoomSpaceType.utilityOutside),
                   ),
                 ],
               ),
@@ -206,11 +218,13 @@ class ReraRoomCard extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             isInside
-                ? 'âœ“ Counted in RERA Carpet Area'
-                : 'âœ“ Excluded from Carpet, in Built-up only',
+                ? '✓ Counted in RERA Carpet Area'
+                : '✓ Excluded from Carpet, in Built-up only',
             style: TextStyle(
               fontSize: 9.5,
-              color: isInside ? const Color(0xFF047857) : const Color(0xFFB45309),
+              color: isInside
+                  ? const Color(0xFF047857)
+                  : const Color(0xFFB45309),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -224,24 +238,31 @@ class ReraRoomCard extends StatelessWidget {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF0284C7) : Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: selected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
+    return Flexible(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF0284C7) : Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF0284C7)
+                  : const Color(0xFFCBD5E1),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : const Color(0xFF475569),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : const Color(0xFF475569),
+              ),
+            ),
           ),
         ),
       ),
@@ -262,4 +283,3 @@ class ReraRoomCard extends StatelessWidget {
     );
   }
 }
-

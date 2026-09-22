@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class ReraDefinitionsSheet extends StatefulWidget {
   final int initialTabIndex;
@@ -65,7 +65,11 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.gavel_rounded, color: Color(0xFF2563EB), size: 20),
+                    Icon(
+                      Icons.gavel_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'RERA Area Rules (Sec 2(k))',
@@ -91,7 +95,10 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
             isScrollable: true,
             labelColor: const Color(0xFF2563EB),
             unselectedLabelColor: const Color(0xFF64748B),
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
             indicatorColor: const Color(0xFF2563EB),
             tabs: const [
               Tab(text: 'Carpet vs Built-up'),
@@ -128,7 +135,7 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
             border: Border.all(color: const Color(0xFFBFDBFE)),
           ),
           child: const Text(
-            'â€œCarpet area means the net usable floor area of an apartment, excluding the area covered by external walls, areas under service shafts, exclusive balcony or verandah, but includes area covered by internal partition walls.â€\nâ€” RERA Act 2016, Sec 2(k)',
+            '“Carpet area means the net usable floor area of an apartment, excluding the area covered by external walls, areas under service shafts, exclusive balcony or verandah, but includes area covered by internal partition walls.”\n— RERA Act 2016, Sec 2(k)',
             style: TextStyle(
               fontSize: 11,
               fontStyle: FontStyle.italic,
@@ -187,7 +194,7 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,23 +220,33 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
               color: Color(0xFF059669),
             ),
           ),
-          ...inclusions.map((item) => Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('âœ“ ',
-                        style: TextStyle(
-                            color: Color(0xFF059669), fontWeight: FontWeight.bold, fontSize: 11)),
-                    Expanded(
-                      child: Text(
-                        item,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+          ...inclusions.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '✓ ',
+                    style: TextStyle(
+                      color: Color(0xFF059669),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF334155),
                       ),
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 6),
           const Text(
             'STRICTLY EXCLUDED:',
@@ -239,23 +256,33 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
               color: Colors.redAccent,
             ),
           ),
-          ...exclusions.map((item) => Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('âœ— ',
-                        style: TextStyle(
-                            color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 11)),
-                    Expanded(
-                      child: Text(
-                        item,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+          ...exclusions.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '✗ ',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF334155),
                       ),
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -299,7 +326,7 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
         _infoCard(
           title: 'Dry Balcony Outside Outer Wall',
           content:
-              'When the washing yard or utility space projects OUTSIDE the flat's continuous external perimeter wall, it is classified as a Dry Balcony. It is EXCLUDED from Carpet Area and included in Built-up Area only.',
+              "When the washing yard or utility space projects OUTSIDE the flat's continuous external perimeter wall, it is classified as a Dry Balcony. It is EXCLUDED from Carpet Area and included in Built-up Area only.",
           icon: Icons.warning_amber_rounded,
           color: const Color(0xFFEA580C),
         ),
@@ -349,7 +376,7 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -384,6 +411,3 @@ class _ReraDefinitionsSheetState extends State<ReraDefinitionsSheet>
     );
   }
 }
-
-
-

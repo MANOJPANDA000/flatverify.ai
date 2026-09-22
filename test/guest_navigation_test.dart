@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,53 +6,57 @@ import 'package:my_first_app/main.dart';
 import 'package:my_first_app/account/session_controller.dart';
 
 void main() {
-  testWidgets('guest can enter and navigate reports and account on a phone', (
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    await (FontLoader(
+      'PlusJakartaSans',
+    )..addFont(rootBundle.load('assets/fonts/PlusJakartaSans.ttf'))).load();
+  });
+  testWidgets('guest opens calculator, saved checks and Learn without login', (
     tester,
   ) async {
-    late Directory directory;
-    await tester.runAsync(() async {
-      directory = await Directory.systemTemp.createTemp('guest_navigation_');
-      Hive.init(directory.path);
-      await SessionController.instance.initialize();
-    });
+    await Hive.openBox('flatverify_area_checks_v1', bytes: Uint8List(0));
+    final session = SessionController.instance;
+    session.guestReports = await Hive.openBox(
+      'guest_session_reports',
+      bytes: Uint8List(0),
+    );
+    session.reports = session.guestReports;
+    session.preferences = await Hive.openBox(
+      'account_preferences',
+      bytes: Uint8List(0),
+    );
+    session.entered = false;
+    session.auth = null;
+    session.user = null;
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
-    const channel = MethodChannel('google_mlkit_text_recognizer');
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      channel,
-      (_) async => null,
-    );
     addTearDown(() async {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        channel,
-        null,
-      );
       await Hive.close();
-      await directory.delete(recursive: true);
+      session.preferences = null;
+      session.entered = false;
     });
     await tester.pumpWidget(const FAreaApp());
+    await tester.pumpAndSettle();
+    expect(find.text('Continue as Guest'), findsOneWidget);
     await tester.ensureVisible(find.text('Continue as Guest'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Continue as Guest'));
     await tester.pumpAndSettle();
-    expect(find.text('Enter Measurements'), findsOneWidget);
-    await tester.tap(find.text('Scan Floor Plan'));
+    expect(find.text('Start Area Check'), findsOneWidget);
+    await tester.ensureVisible(find.text('Start Area Check'));
+    await tester.tap(find.text('Start Area Check'));
     await tester.pumpAndSettle();
-    expect(find.byType(NavigationBar), findsOneWidget);
-    expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      1,
-    );
-    expect(find.text('Add your floor plan'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.folder_outlined));
-    await tester.pumpAndSettle();
-    expect(find.text('Your reports are temporary'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.byIcon(Icons.person_outline));
-    await tester.pumpAndSettle();
-    expect(find.text('Help & Support'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    expect(find.text('Property name (optional)'), findsOneWidget);
+    for (final index in [2, 3, 4, 0]) {
+      tester
+          .widget<NavigationBar>(find.byType(NavigationBar))
+          .onDestinationSelected!(index);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    }
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });

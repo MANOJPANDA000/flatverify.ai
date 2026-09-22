@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class CarpetEfficiencyGauge extends StatelessWidget {
   final double efficiencyPercent;
@@ -25,11 +25,13 @@ class CarpetEfficiencyGauge extends StatelessWidget {
     } else if (efficiencyPercent >= 68) {
       color = const Color(0xFF2563EB);
       rating = 'Good Standard';
-      comment = 'Optimal balance between personal flat space and common amenities.';
+      comment =
+          'Optimal balance between personal flat space and common amenities.';
     } else if (efficiencyPercent >= 62) {
       color = const Color(0xFFD97706);
       rating = 'Moderate';
-      comment = 'Significant area consumed by building amenities & circulation.';
+      comment =
+          'Significant area consumed by building amenities & circulation.';
     } else {
       color = const Color(0xFFDC2626);
       rating = 'Heavy Loading';
@@ -44,7 +46,7 @@ class CarpetEfficiencyGauge extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -107,4 +109,3 @@ class CarpetEfficiencyGauge extends StatelessWidget {
     );
   }
 }
-

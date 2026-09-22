@@ -17,10 +17,7 @@ void main() {
     );
 
     expect(find.text('Flatverify.ai'), findsOneWidget);
-    expect(
-      find.text('Clear measurements. Confident decisions.'),
-      findsOneWidget,
-    );
-    expect(find.text('Enter Measurements'), findsOneWidget);
+    expect(find.textContaining('Understand your true'), findsOneWidget);
+    expect(find.text('Manual Calculator'), findsOneWidget);
   });
 }

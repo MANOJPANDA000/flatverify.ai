@@ -66,13 +66,39 @@ void main() {
       });
       await tester.pumpAndSettle();
       expect(session.lastEmail, 'person@example.com');
-      expect(session.preferences!.toMap(), {'lastEmail': 'person@example.com'});
+      expect(session.preferences!.toMap(), {
+        'lastEmail': 'person@example.com',
+        'sessionMode': 'account',
+      });
       expect(state.password.text, isEmpty);
       expect(session.isGuest, isFalse);
     },
   );
 
-  testWidgets('account supports profile edits and clearly disables upload', (
+  testWidgets('profile photo action explains unavailable upload', (
+    tester,
+  ) async {
+    final user = TestUser();
+    session.user = user;
+    session.auth = TestAuth(user);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: AccountScreen())),
+    );
+    final photoAction = find.byTooltip('Manage profile photo');
+    expect(photoAction, findsOneWidget);
+    await tester.tap(photoAction);
+    await tester.pumpAndSettle();
+    expect(find.text('Choose from gallery'), findsOneWidget);
+    expect(find.text('Take a photo'), findsOneWidget);
+    await tester.tap(find.text('Choose from gallery'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Profile photo upload is not available yet.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('account supports profile edits and photo removal', (
     tester,
   ) async {
     final user = TestUser(photoURL: 'https://example.invalid/unavailable.png');
@@ -81,15 +107,21 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: AccountScreen())),
     );
-    final upload = find.widgetWithText(OutlinedButton, 'Upload / change photo');
-    expect(tester.widget<OutlinedButton>(upload).onPressed, isNull);
     await tester.ensureVisible(find.widgetWithText(TextField, 'Full name'));
     await tester.enterText(
       find.widgetWithText(TextField, 'Full name'),
       'Updated Person',
     );
+    await tester.pump();
+    final dynamic profileState = tester.state(find.byType(ProfileSettings));
+    expect(profileState.name.text, 'Updated Person');
+    expect(profileState.dirty, isTrue);
     await tester.ensureVisible(find.text('Save profile'));
-    await tester.tap(find.text('Save profile'));
+    final save = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save profile'),
+    );
+    expect(save.onPressed, isNotNull);
+    save.onPressed!();
     await tester.pumpAndSettle();
     expect(user.displayName, 'Updated Person');
     expect(find.text('Profile updated.'), findsOneWidget);
@@ -120,7 +152,11 @@ void main() {
       await session.activateUser(user);
       expect(session.lastEmail, isEmpty);
       expect(session.preferences!.containsKey('lastEmail'), isFalse);
-      expect(session.preferences!.keys.toSet(), {'rememberEmail'});
+      expect(session.preferences!.toMap(), {
+        'rememberEmail': false,
+        'biometricEnabled': false,
+        'sessionMode': 'account',
+      });
     },
   );
 

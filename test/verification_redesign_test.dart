@@ -52,7 +52,7 @@ void main() {
     );
     await tester.tap(find.text('View results'));
     await tester.pumpAndSettle();
-    expect(find.text('Area calculation').hitTestable(), findsOneWidget);
+    expect(find.text('Area Audit Summary').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

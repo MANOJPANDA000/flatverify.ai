@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'branding.dart';
 
 class AppLayout {
-  static const maxContentWidth = 960.0;
+  static const maxContentWidth = 1280.0;
   static const pagePadding = EdgeInsets.all(20);
   static const sectionGap = 20.0;
 }
@@ -10,9 +10,10 @@ class AppLayout {
 ThemeData buildAppTheme() {
   final theme = ThemeData(
     useMaterial3: true,
+    fontFamily: 'PlusJakartaSans',
     navigationBarTheme: NavigationBarThemeData(
       height: 64,
-      indicatorColor: Colors.transparent,
+      indicatorColor: const Color(0xFFEAF1FF),
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           size: 24,
@@ -35,8 +36,8 @@ ThemeData buildAppTheme() {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        minimumSize: const Size(48, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
       ),
     ),
@@ -47,11 +48,12 @@ ThemeData buildAppTheme() {
         side: const BorderSide(color: AppColors.border),
       ),
     ),
-    scaffoldBackgroundColor: const Color(0xFFF6F7FB),
+    scaffoldBackgroundColor: AppColors.background,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF2457D6),
-      primary: const Color(0xFF2457D6),
-      secondary: const Color(0xFF2457D6),
+      seedColor: const Color(0xFF2563EB),
+      primary: const Color(0xFF2563EB),
+      secondary: const Color(0xFF2563EB),
+      surface: Colors.white,
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
@@ -73,7 +75,9 @@ ThemeData buildAppTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: const Color(0xFFFAFBFE),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      labelStyle: const TextStyle(fontSize: 14, color: Color(0xFF68758B)),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -84,11 +88,34 @@ ThemeData buildAppTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF2457D6), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
       ),
     ),
   );
   return theme.copyWith(
+    chipTheme: ChipThemeData(
+      selectedColor: const Color(0xFFEAF1FF),
+      backgroundColor: const Color(0xFFF7F9FC),
+      checkmarkColor: AppColors.primary,
+      labelStyle: const TextStyle(
+        fontFamily: 'PlusJakartaSans',
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF334A6B),
+      ),
+      side: const BorderSide(color: Color(0xFFE4EAF3)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    ),
+    dividerTheme: const DividerThemeData(
+      color: Color(0xFFE7ECF3),
+      thickness: 1,
+    ),
+    expansionTileTheme: const ExpansionTileThemeData(
+      shape: Border(),
+      collapsedShape: Border(),
+      iconColor: AppColors.primary,
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: theme.filledButtonTheme.style?.copyWith(
         textStyle: WidgetStatePropertyAll(

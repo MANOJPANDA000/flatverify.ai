@@ -9,26 +9,13 @@ The verification email contains a link, not an OTP. If sending is rate-limited,
 check Inbox and Spam for an earlier message and wait before requesting another.
 The app's resend countdown cannot remove Firebase's server-side restriction.
 
-## This computer is configured
+## Configure this checkout
 
-The matching `com.example.my_first_app` client from the downloaded
-`google-services.json` has been imported into `config/firebase.json`.
-This file is excluded from Git. No paid SMS is enabled by this setup.
-
-In VS Code, select **Run and Debug > Flatverify — Email sign-in**, connect your
-Android phone, then press **F5**. This launch option supplies the configuration
-automatically. From PowerShell, use:
-
-```powershell
-flutter run --dart-define-from-file=config/firebase.json
-```
-
-Firebase Console must also have **Authentication > Sign-in method >
-Email/Password** enabled. Then use **Get Started** in the app with your own
-email and a new password, open the verification email, and return to the app
-to select **I have verified my email**. End-to-end sign-in must be checked on
-the device after this console step; importing the file alone does not enable
-the provider.
+This checkout contains `config/firebase.example.json`; an active Firebase
+configuration has not been verified. Follow the setup below before testing real
+sign-in. Supply published HTTPS `TERMS_URL` and `PRIVACY_URL` values in the same
+local define file to enable account registration. See
+[welcome and login implementation](welcome-login.md) for biometric setup.
 
 ## Start with free email/password registration
 
@@ -59,7 +46,7 @@ has been configured. No billing is enabled by the app.
 
    Use this define file on future runs and builds too; a plain `flutter run`
    without configuration builds the guest-only fallback.
-7. In the app, choose **Get Started**. Enter your name and actual email address,
+7. In the app, choose **Create Account**. Enter your name and actual email address,
    then choose a password of at least 8 characters.
 8. Open the verification email (check spam too), follow its link, return to the
    app and tap **I have verified my email**.
@@ -109,7 +96,7 @@ need their own Firebase app registration and matching app ID.
    flutter run --dart-define-from-file=config/firebase.json
    ```
 
-7. Tap **Get Started**, enter your name and mobile number, check the country
+7. Tap **Create Account**, enter your name and mobile number, check the country
    code, and tap **Continue**. Complete any browser verification and enter the
    SMS code in the app. Do not share your OTP in chat.
 8. Save a report, fully close the app, and reopen it. Your registered account
@@ -122,10 +109,11 @@ and [SMS billing and limits](https://firebase.google.com/docs/auth/limits).
 
 ## Reports and sessions
 
-- Guest reports use a separate Hive box, cleared only at process startup.
+- Guest reports use a separate Hive box and persist across process restarts.
   Opening the camera, gallery, switching tabs or backgrounding does not clear it.
 - Each verified account uses a box scoped to its Firebase UID. Firebase persists
-  its authentication session; the app restores verified users on the next launch.
+  its authentication session; Remember Me controls restoration. Biometric opt-in
+  requires a native biometric unlock before restoring access.
 - Signing in transfers current guest reports. Previous unowned `local_audits`
   are preserved until the first verified account imports them. The source is
   cleared only after the destination is flushed successfully.
@@ -141,3 +129,18 @@ Official references:
 - https://firebase.google.com/docs/flutter/setup
 - https://firebase.google.com/docs/auth/flutter/phone-auth
 - https://firebase.google.com/docs/auth/flutter/password-auth
+# Android autofill and profile photos
+
+Android Credential Manager or Google Password Manager owns the account chooser
+shown above the keyboard. Flatverify cannot add entries to, or restyle, that
+system UI. The email field remains editable and supports typing, pasting, and
+autofill for any application email; the app never substitutes the phone's
+Google account and never stores passwords.
+
+Profile photo selection remains unavailable until authenticated image storage
+is deployed. A secure Firebase Storage setup must use a per-user path such as
+`profilePhotos/{uid}/avatar`, require `request.auth.uid == uid`, allow only
+validated JPEG/PNG/WebP image content, enforce a 5 MB maximum, and deny public
+writes. The upload service must update the authenticated profile only after a
+confirmed upload, retain the old photo on failure, and delete replaced files
+according to an explicit cleanup policy. Do not deploy permissive test rules.

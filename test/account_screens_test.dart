@@ -44,11 +44,16 @@ void main() {
     expect(find.text('Enter a valid email address.'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Country code'), findsNothing);
   });
-  testWidgets('welcome explains temporary guest reports', (tester) async {
+  testWidgets('welcome explains persistent local guest reports', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
     expect(find.text('Continue as Guest'), findsOneWidget);
-    expect(find.textContaining('Guest reports last'), findsOneWidget);
-    expect(find.text('Get Started'), findsOneWidget);
+    expect(
+      find.textContaining('Guest calculations are stored only'),
+      findsOneWidget,
+    );
+    expect(find.text('Create Account'), findsOneWidget);
   });
 
   testWidgets(

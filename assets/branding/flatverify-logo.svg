@@ -1,0 +1,6 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Flatverify.ai">
+  <rect width="64" height="64" rx="14" fill="#2563EB"/>
+  <path d="M12 29 32 12 52 29M19 25v24h26V25" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 26 44 31v8c0 8-12 14-12 14S20 47 20 39v-8Z" fill="#2563EB" stroke="white" stroke-width="3"/>
+  <path d="m26 39 4 4 8-9" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

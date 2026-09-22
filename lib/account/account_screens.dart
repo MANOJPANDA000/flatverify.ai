@@ -3,14 +3,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../branding.dart';
+import '../studio_ui.dart';
 import 'session_controller.dart';
 import 'profile_widgets.dart';
 import 'auth_feedback.dart';
+import 'access_screen.dart';
+import '../area_check/check_ui.dart';
 
 void openSignIn(BuildContext context, {bool register = false}) =>
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => SignInScreen(register: register)),
+      MaterialPageRoute(builder: (_) => AccessScreen(register: register)),
     );
 
 class SessionGateway extends StatelessWidget {
@@ -31,89 +34,126 @@ class SessionGateway extends StatelessWidget {
   );
 }
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
   @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  bool busy = false;
+  String? error;
+  Future<void> guest() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await SessionController.instance.enterGuest();
+    } catch (_) {
+      if (mounted) {
+        setState(() => error = 'Could not open guest mode. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF8FAFC),
     body: SafeArea(
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+            constraints: const BoxConstraints(maxWidth: 460),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Center(child: FLogo(size: 48)),
-                const SizedBox(height: 12),
+                const Center(child: FLogo(size: 58)),
+                const SizedBox(height: 14),
                 const Text(
                   'Flatverify.ai',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.dark,
-                  ),
-                ),
-                const Text(
-                  'Understand Your Property',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: Image.asset(
-                    'assets/branding/floor_plan_hero.png',
-                    height: 120,
-                    fit: BoxFit.cover,
-                    excludeFromSemantics: true,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Know your space.\nUnderstand every square foot.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 23,
-                    height: 1.2,
+                    fontSize: 29,
+                    letterSpacing: -.8,
                     fontWeight: FontWeight.w800,
                     color: AppColors.dark,
                   ),
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 5),
                 const Text(
-                  'Scan a plan. Check each room. Keep a clear report.',
+                  'Understand Your Property',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: CheckPalette.muted),
+                ),
+                const SizedBox(height: 28),
+                Container(
+                  height: 170,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF12294C),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const CustomPaint(painter: FloorPlanArtwork()),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'A clearer picture.\nA more confident decision.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: AppColors.secondaryText,
+                    fontSize: 25,
+                    height: 1.2,
+                    letterSpacing: -.7,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
                   ),
                 ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => openSignIn(context, register: true),
-                  child: const Text('Get Started'),
+                const SizedBox(height: 14),
+                const Text(
+                  'Measure your layout, understand your usable area and make an informed property decision.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.65,
+                    color: CheckPalette.muted,
+                  ),
                 ),
-                OutlinedButton(
-                  onPressed: () => openSignIn(context),
+                const SizedBox(height: 24),
+                if (error != null) CheckHint(error!, warning: true),
+                FilledButton(
+                  onPressed: busy ? null : () => openSignIn(context),
                   child: const Text('Sign In'),
                 ),
-                TextButton(
-                  onPressed: SessionController.instance.enterGuest,
-                  child: const Text('Continue as Guest'),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: busy
+                      ? null
+                      : () => openSignIn(context, register: true),
+                  child: const Text('Create Account'),
                 ),
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: busy ? null : guest,
+                  child: busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Continue as Guest'),
+                ),
+                const SizedBox(height: 12),
                 const Text(
-                  'Guest reports last for this app session. Download a PDF or register to keep them.',
+                  guestStorageMessage,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.secondaryText,
-                    height: 1.3,
+                    height: 1.6,
+                    color: CheckPalette.muted,
                   ),
                 ),
               ],
@@ -140,12 +180,12 @@ class GuestReportNotice extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Your reports are temporary',
+            'Your reports stay on this device',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           const Text(
-            'Keep them by registering, or download a PDF. Guest reports are cleared when a new app session starts.',
+            'Guest calculations remain on this device. Export important reports before uninstalling or clearing app data.',
             style: TextStyle(fontSize: 12, height: 1.4),
           ),
           TextButton(
@@ -162,7 +202,12 @@ enum _SignInStep { identifier, password, otp, verifyEmail }
 
 class SignInScreen extends StatefulWidget {
   final bool register;
-  const SignInScreen({super.key, this.register = false});
+  final Future<String> Function()? rememberedEmailLoader;
+  const SignInScreen({
+    super.key,
+    this.register = false,
+    this.rememberedEmailLoader,
+  });
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
@@ -189,6 +234,8 @@ class _SignInScreenState extends State<SignInScreen> {
   int emailResendSeconds = 0;
   int phoneRequest = 0;
   bool completing = false;
+  bool identifierEdited = false;
+  int emailLoadRequest = 0;
   SessionController get session => SessionController.instance;
   bool get isEmail => identifier.text.contains('@');
   String get phone => identifier.text.trim().startsWith('+')
@@ -201,6 +248,40 @@ class _SignInScreenState extends State<SignInScreen> {
     registering = widget.register;
     rememberEmail = session.preferences == null || session.rememberEmail;
     if (!registering) identifier.text = session.lastEmail;
+    if (!registering && identifier.text.isEmpty) {
+      _loadRememberedEmail();
+    }
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final request = ++emailLoadRequest;
+    final loaded =
+        await (widget.rememberedEmailLoader ?? session.loadLastEmail)();
+    if (!mounted ||
+        request != emailLoadRequest ||
+        identifierEdited ||
+        registering ||
+        identifier.text.isNotEmpty ||
+        loaded.isEmpty) {
+      return;
+    }
+    setState(() => identifier.text = loaded);
+  }
+
+  void _switchRegistrationMode() {
+    setState(() {
+      registering = !registering;
+      message = null;
+      if (!registering &&
+          !identifierEdited &&
+          identifier.text.isEmpty &&
+          session.lastEmail.isNotEmpty) {
+        identifier.text = session.lastEmail;
+      }
+    });
+    if (!registering && !identifierEdited && identifier.text.isEmpty) {
+      _loadRememberedEmail();
+    }
   }
 
   @override
@@ -209,6 +290,7 @@ class _SignInScreenState extends State<SignInScreen> {
     emailTimer?.cancel();
     passwordFocus.dispose();
     phoneRequest++;
+    emailLoadRequest++;
     for (final controller in [identifier, password, name, country, otp]) {
       controller.dispose();
     }
@@ -554,7 +636,11 @@ class _SignInScreenState extends State<SignInScreen> {
                       ],
                       textInputAction: TextInputAction.next,
                       onSubmitted: (_) => submit(),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) {
+                        identifierEdited = true;
+                        emailLoadRequest++;
+                        setState(() {});
+                      },
                       autocorrect: false,
                       decoration: const InputDecoration(
                         labelText: phoneEnabled
@@ -750,10 +836,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   if (step == _SignInStep.identifier)
                     TextButton(
-                      onPressed: () => setState(() {
-                        registering = !registering;
-                        message = null;
-                      }),
+                      onPressed: _switchRegistrationMode,
                       child: Text(
                         registering
                             ? 'Already registered? Sign in'
@@ -773,7 +856,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Guest reports are temporary. Account reports stay on this device until you delete them. Cloud backup is not enabled.',
+                    'Guest and account reports stay on this device until you delete them or clear app data. Cloud backup is not enabled.',
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.4,
@@ -801,13 +884,15 @@ class AccountScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const BrandHeader(compact: true),
-            const SizedBox(height: 24),
-            const Text(
-              'Your account',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+            if (!StudioShellScope.contains(context)) ...[
+              const BrandHeader(compact: true),
+              const SizedBox(height: 24),
+            ],
+            const StudioHeading(
+              title: 'Settings & Account',
+              subtitle:
+                  'Configure measurement units and manage your account and saved reports.',
             ),
-            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -826,7 +911,7 @@ class AccountScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     SelectableText(
                       session.isGuest
-                          ? 'Temporary session'
+                          ? 'Local guest access'
                           : session.user!.email ??
                                 session.user!.phoneNumber ??
                                 '',
@@ -845,6 +930,7 @@ class AccountScreen extends StatelessWidget {
               ),
             ] else ...[
               const ProfileSettings(),
+              const BiometricLoginSetting(),
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
@@ -852,6 +938,46 @@ class AccountScreen extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 20),
+            const StudioPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.tune, color: AppColors.primary),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Audit & Calculation Preferences',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Divider(height: 28),
+                  Text(
+                    'Default area display',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: 8),
+                  StudioUnitControl(),
+                  SizedBox(height: 12),
+                  Text(
+                    'Change display units without changing saved measurements. Wall and loading assumptions can be adjusted inside each calculation.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.secondaryText,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.help_outline),
               title: const Text('Help & Support'),
@@ -868,7 +994,7 @@ class AccountScreen extends StatelessWidget {
               onTap: () => _information(
                 context,
                 'Privacy & storage',
-                'Reports and floor-plan images are stored on this device. Guest reports are cleared on the next app launch. Account reports remain available after sign-in. Downloaded PDFs remain wherever you saved them.\n\nWhen sign-in is enabled, Firebase processes authentication information. Mobile numbers are sent to Google for authentication and abuse prevention. Passwords and OTPs are not stored in the report database. If Remember my email is enabled, the last successfully verified email is stored on this device. Turn it off in Account to clear the remembered address.\n\nThe app owner’s contact details and full privacy policy are required before public release.',
+                'Reports and floor-plan images are stored on this device. Guest reports remain on this device across app launches. Account reports remain available after sign-in. Downloaded PDFs remain wherever you saved them.\n\nWhen sign-in is enabled, Firebase processes authentication information. Mobile numbers are sent to Google for authentication and abuse prevention. Passwords and OTPs are not stored in the report database. If Remember my email is enabled, the last successfully verified email is stored on this device. Turn it off in Account to clear the remembered address.\n\nThe app owner’s contact details and full privacy policy are required before public release.',
               ),
             ),
             ListTile(
@@ -886,6 +1012,9 @@ class AccountScreen extends StatelessWidget {
                 onPressed: () async {
                   try {
                     await session.signOut();
+                    if (context.mounted) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
                   } catch (_) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -973,7 +1102,7 @@ class HelpScreen extends StatelessWidget {
             Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Save an audit, open its report, then tap Preview → Download. Guest reports last for the current app session. Register or sign in to move current guest reports into your account on this device.',
+                'Save an audit, open its report, then tap Preview → Download. Guest reports remain on this device until deleted or app data is cleared. Register or sign in to move current guest reports into your account on this device.',
               ),
             ),
           ],

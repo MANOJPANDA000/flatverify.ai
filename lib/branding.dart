@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const primary = Color(0xFF2457D6);
-  static const dark = Color(0xFF172033);
-  static const text = Color(0xFF202938);
-  static const secondaryText = Color(0xFF697386);
-  static const background = Color(0xFFF6F7FB);
-  static const border = Color(0xFFE4E7EC);
-  static const green = Color(0xFF147D48);
-  static const orange = Color(0xFFA85C00);
-  static const red = Color(0xFFD92D20);
-  static const lightBlue = Color(0xFFEAF0FF);
+  static const primary = Color(0xFF2563EB);
+  static const dark = Color(0xFF0F172A);
+  static const text = Color(0xFF1E293B);
+  static const secondaryText = Color(0xFF64748B);
+  static const background = Color(0xFFF8FAFC);
+  static const border = Color(0xFFE2E8F0);
+  static const green = Color(0xFF059669);
+  static const orange = Color(0xFFD97706);
+  static const red = Color(0xFFEF4444);
+  static const lightBlue = Color(0xFFEFF6FF);
 }
 
 // ============================================================
@@ -28,9 +28,7 @@ class FLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF172B65), Color(0xFF2457D6)],
-        ),
+        color: const Color(0xFF1D4ED8),
         borderRadius: BorderRadius.circular(size * 0.25),
         boxShadow: [
           BoxShadow(
@@ -41,7 +39,7 @@ class FLogo extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(size * 0.13),
+        padding: EdgeInsets.all(size * 0.08),
         child: const CustomPaint(painter: FlatverifyLogoPainter()),
       ),
     );
@@ -53,37 +51,39 @@ class FlatverifyLogoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint white = Paint()..color = Colors.white;
-    final Paint navy = Paint()..color = AppColors.dark;
-    final Paint line = Paint()
+    canvas.scale(size.width / 64, size.height / 64);
+    final line = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * .075
-      ..strokeCap = StrokeCap.round;
-
-    final Path roof = Path()
-      ..moveTo(size.width * .08, size.height * .55)
-      ..lineTo(size.width * .50, size.height * .15)
-      ..lineTo(size.width * .92, size.height * .55)
-      ..lineTo(size.width * .78, size.height * .55)
-      ..lineTo(size.width * .50, size.height * .30)
-      ..lineTo(size.width * .22, size.height * .55)
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(12, 29)
+        ..lineTo(32, 12)
+        ..lineTo(52, 29)
+        ..moveTo(19, 25)
+        ..lineTo(19, 49)
+        ..lineTo(45, 49)
+        ..lineTo(45, 25),
+      line,
+    );
+    final shield = Path()
+      ..moveTo(32, 26)
+      ..lineTo(44, 31)
+      ..lineTo(44, 39)
+      ..quadraticBezierTo(44, 47, 32, 54)
+      ..quadraticBezierTo(20, 47, 20, 39)
+      ..lineTo(20, 31)
       ..close();
-    canvas.drawPath(roof, white);
-
-    final Path checkHouse = Path()
-      ..moveTo(size.width * .22, size.height * .56)
-      ..lineTo(size.width * .43, size.height * .76)
-      ..lineTo(size.width * .82, size.height * .43)
-      ..lineTo(size.width * .82, size.height * .78)
-      ..lineTo(size.width * .50, size.height * .92)
-      ..lineTo(size.width * .18, size.height * .76)
-      ..close();
-    canvas.drawPath(checkHouse, navy);
-
-    canvas.drawLine(
-      Offset(size.width * .43, size.height * .75),
-      Offset(size.width * .80, size.height * .44),
+    canvas.drawPath(shield, Paint()..color = const Color(0xFF2563EB));
+    canvas.drawPath(shield, line);
+    canvas.drawPath(
+      Path()
+        ..moveTo(26, 39)
+        ..lineTo(30, 43)
+        ..lineTo(38, 34),
       line,
     );
   }
@@ -101,25 +101,35 @@ class BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        FLogo(size: compact ? 42 : 50),
-        const SizedBox(width: 12),
+        FLogo(size: compact ? 36 : 50),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Flatverify.ai',
-                style: TextStyle(
-                  fontSize: compact ? 20 : 25,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.dark,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Flatverify.ai',
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: compact ? 18 : 25,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.dark,
+                  ),
                 ),
               ),
-              Text(
-                'Understand Your Property',
-                style: TextStyle(
-                  fontSize: compact ? 11 : 12.5,
-                  color: AppColors.secondaryText,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Understand your property',
+                  style: TextStyle(
+                    fontSize: compact ? 10 : 12.5,
+                    color: AppColors.secondaryText,
+                  ),
                 ),
               ),
             ],

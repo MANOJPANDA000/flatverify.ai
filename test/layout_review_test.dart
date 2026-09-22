@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:my_first_app/account/account_screens.dart';
+import 'package:my_first_app/account/access_screen.dart';
 import 'package:my_first_app/account/profile_widgets.dart';
 import 'package:my_first_app/account/session_controller.dart';
 import 'package:my_first_app/app_theme.dart';
@@ -15,6 +16,9 @@ import 'report_units_test.dart' show report;
 
 void main() {
   setUpAll(() async {
+    await (FontLoader('PlusJakartaSans')
+          ..addFont(rootBundle.load('assets/fonts/PlusJakartaSans.ttf')))
+        .load();
     // Use the SDK fonts for review images when available; no bundled test assets.
     final fonts =
         '${File(Platform.resolvedExecutable).parent.parent.parent.path}/material_fonts';
@@ -75,6 +79,8 @@ void main() {
       });
       final screens = <String, Widget>{
         'welcome': const WelcomeScreen(),
+        'access': const AccessScreen(),
+        'registration': const AccessScreen(register: true),
         'sign-in': const SignInScreen(),
         'home': const HomeScreen(),
         'verify': const OcrScannerScreen(),
@@ -131,7 +137,15 @@ void main() {
         if (entry.key == 'home') {
           expect(find.byType(ProfileAvatar), findsOneWidget);
         }
-        if (width == 320 && ['home', 'account', 'report'].contains(entry.key)) {
+        if (width == 320 &&
+            [
+              'welcome',
+              'access',
+              'registration',
+              'home',
+              'account',
+              'report',
+            ].contains(entry.key)) {
           await tester.runAsync(() async {
             final image =
                 await (boundary.currentContext!.findRenderObject()
